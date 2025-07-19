@@ -1,30 +1,35 @@
-# 🧾 Receipt Scanner Agent
+# 🧾 Multimodal Receipt Scanner Agent
 
-An advanced AI-powered receipt scanning agent built with Google's Agent Development Kit (ADK) and Gemini Vision AI. This agent can process receipt images to extract itemized information, pricing details, and provide structured data output compatible with the Model Context Protocol (MCP).
+A comprehensive AI-powered receipt processing agent that supports **text, Excel, PDF, image, and video inputs** using Google's Agent Development Kit (ADK), Gemini 2.5 Flash for vision AI, and LLM enrichment for structured data extraction. Features robust JSON output with MCP compatibility, local storage, search, analytics, and export capabilities.
 
-## ✨ Features
+## 🌟 Features
 
-### 📸 **Receipt Scanning Capabilities**
-- **Store Information Extraction**: Name, address, phone, date, time, receipt number
-- **Individual Item Details**: Name, quantity, unit price, total price, category
-- **Financial Totals**: Subtotal, tax, discounts, final total, payment method
-- **Multi-format Support**: File paths, base64 encoded images, URLs
+### 📁 **Multimodal Input Support**
+- **🖼️ Images** (JPG, PNG, GIF, BMP, TIFF, WebP) - Gemini 2.5 Flash Vision AI
+- **🎥 Videos** (MP4, AVI, MOV, WMV, FLV, WebM, MKV) - Frame extraction + Vision AI
+- **📄 PDF Documents** - OCR text extraction + LLM enrichment
+- **📊 Excel/CSV Files** - Structured data processing + LLM categorization
+- **📝 Text Files** - Pattern matching + LLM enrichment
 
-### 🔄 **MCP Integration**
-- **Structured Data Output**: Compatible with Model Context Protocol for agent-to-agent communication
-- **JSON-formatted Responses**: Easy integration with other systems and agents
-- **Standardized Error Handling**: Consistent status reporting across all operations
+### 🤖 **Advanced AI Processing**
+- **Gemini 2.5 Flash** for image and video analysis with high accuracy
+- **LLM Enrichment** for text-based inputs with automatic categorization
+- **Confidence Scoring** for all extracted data elements
+- **Smart Categorization** with 10+ predefined categories (food, electronics, etc.)
 
-### 📊 **Analysis Features**
-- **Spending Trend Analysis**: Track expenses over time
-- **Category Breakdowns**: Organize spending by item categories
-- **Store Analytics**: Identify most frequented stores
-- **Item Purchase Patterns**: Track frequently bought items
+### 📋 **Robust JSON Output**
+- **MCP-Compatible Structure** for seamless agent-to-agent communication
+- **Complete Receipt Information**: store details, transaction info, itemized list
+- **Financial Accuracy**: subtotals, taxes, discounts, payment methods
+- **Metadata Tracking**: processing timestamps, confidence scores, source info
+- **Warranty & Return Policies**: automatic detection and expiry calculation
 
-### 📱 **Camera Integration Ready**
-- **Multiple Input Methods**: Support for various camera integration approaches
-- **Platform Agnostic**: Works with mobile, web, and desktop camera implementations
-- **Real-time Processing**: Optimized for quick receipt scanning workflows
+### 💾 **Local Storage & Analytics**
+- **JSON + SQLite Storage** for performance and reliability
+- **Advanced Search** by store, category, date, amount, or text query
+- **Analytics Dashboard** with spending insights and statistics
+- **Export Capabilities** to JSON and CSV formats
+- **User Tagging** for custom organization and categorization
 
 ## 🚀 Quick Start
 
@@ -32,14 +37,14 @@ An advanced AI-powered receipt scanning agent built with Google's Agent Developm
 
 1. **Python 3.8+**
 2. **Google ADK** - Agent Development Kit
-3. **Google API Key** for Gemini Vision AI
+3. **Google API Key** for Gemini AI
 4. **Required Dependencies** (see requirements.txt)
 
 ### Installation
 
 ```bash
-# Clone or navigate to the receipt scanner directory
-cd multi_tool_agent/receipt_scanner/
+# Navigate to the receipt scanner directory
+cd receipt_scanner/
 
 # Install dependencies
 pip install -r requirements.txt
@@ -51,250 +56,278 @@ export GOOGLE_API_KEY="your_gemini_api_key_here"
 ### ADK Web Interface (Recommended)
 
 ```bash
-# Start the ADK web interface with camera support
+# Start the ADK web interface
 adk web
 
 # Open the provided URL in your browser (usually http://localhost:8080)
-# The interface provides:
-# - 📸 Camera capture from browser
-# - 📁 Drag & drop file upload
-# - 🔍 Real-time receipt processing
-# - 📊 MCP-formatted results
-# - 📈 Analytics dashboard
-```
-
-### Programmatic Usage
-
-```python
-from agent import process_receipt_image
-
-# Scan a receipt from file path
-result = process_receipt_image("path/to/receipt.jpg", image_format="file_path")
-
-# Scan a receipt from base64 data (e.g., from camera)
-result = process_receipt_image(base64_image_data, image_format="base64")
-
-print(result)
+# Features available:
+# - 📁 Upload any supported file type
+# - 🤖 Automatic processing with appropriate AI model
+# - 📊 Real-time receipt processing results
+# - 💾 Automatic local storage
+# - 🔍 Search and analytics interface
 ```
 
 ## 📖 Detailed Usage
 
-### 1. File Path Scanning
+### 1. **Image Receipt Processing**
+
+Upload any receipt image and get comprehensive extraction:
 
 ```python
-from agent import process_receipt_image
+from agent import process_multimodal_receipt
 
-# Process receipt from saved image file
-result = process_receipt_image(
-    image_data="receipt_photo.jpg",
-    image_format="file_path"
+# Process an image receipt
+result = await process_multimodal_receipt(
+    file_data="receipt_photo.jpg",
+    filename="receipt_photo.jpg",
+    store_receipt=True,
+    user_tags=["grocery", "weekly-shopping"],
+    user_category="Food & Groceries"
 )
 
+# Access structured data
 if result["status"] == "success":
     receipt_data = result["receipt_data"]
-    print(f"Store: {receipt_data['store_info']['name']}")
-    print(f"Total: ${receipt_data['totals']['total']}")
-    print(f"Items: {len(receipt_data['items'])}")
+    store_name = receipt_data["receipt_payload"]["store_details"]["name"]
+    total = receipt_data["receipt_payload"]["payment_summary"]["total_amount"]
+    items = receipt_data["receipt_payload"]["line_items"]
+
+    print(f"Store: {store_name}")
+    print(f"Total: ${total}")
+    print(f"Items: {len(items)}")
 ```
 
-### 2. Base64 Scanning (Camera Integration)
+### 2. **PDF Receipt Processing**
+
+Process scanned or digital PDF receipts:
 
 ```python
-import base64
-from agent import process_receipt_image
-
-# Convert image to base64 (simulating camera capture)
-with open("receipt.jpg", "rb") as img_file:
-    image_data = base64.b64encode(img_file.read()).decode('utf-8')
-
-# Process the base64 image
-result = process_receipt_image(
-    image_data=image_data,
-    image_format="base64"
+# Process PDF receipt with OCR + LLM enrichment
+result = await process_multimodal_receipt(
+    file_data="invoice.pdf",
+    filename="invoice.pdf",
+    store_receipt=True,
+    user_tags=["business", "office-supplies"],
+    user_category="Business Expenses"
 )
 
-# Access MCP-formatted data
-mcp_data = result["mcp_format"]
-extracted = mcp_data["extracted_data"]
-store_info = extracted["store_information"]
-line_items = extracted["line_items"]
+# PDF processing includes text extraction and smart categorization
 ```
 
-### 3. Receipt Trend Analysis
+### 3. **Excel/CSV Processing**
+
+Handle structured expense data:
 
 ```python
-from agent import analyze_receipt_trends
+# Process Excel expense report
+result = await process_multimodal_receipt(
+    file_data="expenses.xlsx",
+    filename="expenses.xlsx",
+    store_receipt=True,
+    user_tags=["quarterly", "travel"],
+    user_category="Travel Expenses"
+)
 
-# Analyze multiple receipts for spending patterns
-receipt_history = [
-    {
-        "status": "success",
-        "receipt_data": {
-            "store_info": {"name": "Grocery Store", "date": "2024-01-15"},
-            "items": [
-                {"name": "Apples", "category": "food", "total_price": 3.99},
-                {"name": "Bread", "category": "food", "total_price": 2.50}
-            ],
-            "totals": {"total": 6.49}
+# Excel processing provides high confidence due to structured data
+```
+
+### 4. **Video Receipt Processing**
+
+Extract receipts from video recordings:
+
+```python
+# Process video of receipt (extracts best frames)
+result = await process_multimodal_receipt(
+    file_data="receipt_video.mp4",
+    filename="receipt_video.mp4",
+    store_receipt=True,
+    user_tags=["mobile-capture", "restaurant"],
+    user_category="Dining Out"
+)
+
+# Video processing automatically extracts and analyzes frames
+```
+
+### 5. **Text Receipt Processing**
+
+Handle manual text entry or OCR output:
+
+```python
+# Process plain text receipt data
+text_receipt = """
+GROCERY STORE RECEIPT
+Store: SuperMart
+Date: 2025-01-20
+Items:
+- Milk: $3.99
+- Bread: $2.49
+- Bananas: $3.87
+Total: $15.49
+"""
+
+result = await process_multimodal_receipt(
+    file_data=text_receipt.encode('utf-8'),
+    filename="manual_receipt.txt",
+    store_receipt=True,
+    user_tags=["manual-entry"],
+    user_category="Groceries"
+)
+```
+
+## 🔍 Search & Analytics
+
+### Search Stored Receipts
+
+```python
+from agent import search_stored_receipts
+
+# Search by text query
+results = await search_stored_receipts(
+    query="SuperMart",
+    filters={"store_name": "SuperMart"},
+    limit=10
+)
+
+# Search by category and date range
+results = await search_stored_receipts(
+    query="grocery",
+    filters={
+        "category": "Groceries",
+        "date_from": "2025-01-01",
+        "date_to": "2025-01-31",
+        "min_amount": 10.00
+    }
+)
+```
+
+### Get Analytics
+
+```python
+from agent import get_storage_statistics
+
+# Get comprehensive statistics
+stats = await get_storage_statistics()
+
+print(f"Total receipts: {stats['statistics']['total_receipts']}")
+print(f"Total spending: ${stats['statistics']['total_spending']}")
+print(f"By category: {stats['statistics']['by_category']}")
+print(f"By store: {stats['statistics']['by_store']}")
+```
+
+### Export Data
+
+```python
+from agent import export_receipts
+
+# Export all receipts to JSON
+export_file = await export_receipts(format="json")
+
+# Export specific receipts to CSV
+export_file = await export_receipts(
+    format="csv",
+    receipt_ids=["receipt-abc123", "receipt-def456"]
+)
+```
+
+## 📊 JSON Output Structure
+
+The agent produces comprehensive, MCP-compatible JSON output:
+
+```json
+{
+  "mcp_format": {
+    "protocol_version": "1.0",
+    "data_type": "processed_receipt",
+    "status": "success",
+    "timestamp_utc": "2025-01-20T10:00:00Z",
+    "agent_id": "multimodal_receipt_scanner",
+    "confidence_score": 0.95
+  },
+  "receipt_payload": {
+    "processing_metadata": {
+      "receipt_id": "receipt-abc123",
+      "source_filename": "receipt.jpg",
+      "source_type": "image",
+      "processor_model": "gemini-2.5-flash",
+      "processing_duration_ms": 2500
+    },
+    "store_details": {
+      "name": "Tech World Electronics",
+      "address": "123 Silicon Valley Blvd, San Jose, CA",
+      "phone_number": "(408) 555-0123",
+      "confidence_score": 0.98
+    },
+    "transaction_details": {
+      "date": "2025-01-20",
+      "time": "15:45:22",
+      "currency": "USD",
+      "transaction_id": "TXN-123456"
+    },
+    "line_items": [
+      {
+        "description": "Wireless Mouse - Logitech MX Master 3",
+        "quantity": 1.0,
+        "unit_price": 99.99,
+        "total_price": 99.99,
+        "category": "electronics",
+        "confidence_score": 0.97,
+        "tax_details": {
+          "tax_amount": 8.25,
+          "tax_rate": 8.25
         }
+      }
+    ],
+    "payment_summary": {
+      "subtotal": 222.95,
+      "total_tax_amount": 19.95,
+      "total_amount": 242.90
+    },
+    "payment_method": {
+      "method": "Credit Card",
+      "card_type": "Visa",
+      "last_4_digits": "4567"
+    },
+    "special_info": {
+      "warranty": {
+        "is_applicable": true,
+        "duration_days": 365,
+        "expiry_date": "2026-01-20"
+      },
+      "return_policy": {
+        "is_returnable": true,
+        "duration_days": 30,
+        "return_deadline": "2025-02-19"
+      }
     }
-    # ... more receipts
-]
-
-analysis = analyze_receipt_trends(receipt_history)
-insights = analysis["insights"]
-print(f"Total Spending: ${insights['total_spending']}")
-print(f"Most Frequent Store: {insights['most_frequent_store']}")
-```
-
-## 🔌 Camera Integration Examples
-
-### Mobile App Integration (React Native)
-
-```javascript
-// React Native example
-import { launchImageLibrary } from 'react-native-image-picker';
-
-const captureReceipt = () => {
-  launchImageLibrary({ mediaType: 'photo' }, (response) => {
-    if (response.assets && response.assets[0]) {
-      const base64Data = response.assets[0].base64;
-
-      // Send to Python backend
-      fetch('http://your-backend/scan-receipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image_data: base64Data,
-          image_format: 'base64'
-        })
-      });
-    }
-  });
-};
-```
-
-### Web Application Integration
-
-```javascript
-// Web camera capture
-const captureReceiptFromCamera = async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-  const video = document.createElement('video');
-  video.srcObject = stream;
-  video.play();
-
-  // Capture frame to canvas
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  // Convert to base64
-  const base64Data = canvas.toDataURL('image/jpeg').split(',')[1];
-
-  // Send to backend for processing
-  const response = await fetch('/api/scan-receipt', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      image_data: base64Data,
-      image_format: 'base64'
-    })
-  });
-
-  const result = await response.json();
-  console.log('Receipt data:', result);
-};
-```
-
-### Desktop Camera Integration (Python)
-
-```python
-import cv2
-import base64
-from agent import process_receipt_image
-
-def capture_and_scan_receipt():
-    # Initialize camera
-    cap = cv2.VideoCapture(0)
-
-    print("Press SPACE to capture receipt, ESC to exit")
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        cv2.imshow('Receipt Scanner - Press SPACE to capture', frame)
-
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord(' '):  # Spacebar to capture
-            # Save captured frame
-            cv2.imwrite('captured_receipt.jpg', frame)
-
-            # Process the receipt
-            result = process_receipt_image(
-                'captured_receipt.jpg',
-                image_format='file_path'
-            )
-
-            print("Scan result:", result)
-            break
-        elif key == 27:  # ESC to exit
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
-```
-
-## 📊 MCP (Model Context Protocol) Integration
-
-The receipt scanner agent outputs data in MCP-compatible format for seamless integration with other AI agents:
-
-```python
-# Example MCP output structure
-mcp_response = {
-    "mcp_format": {
-        "protocol_version": "1.0",
-        "data_type": "receipt_scan",
-        "status": "success",
-        "timestamp": "2024-01-15T10:30:00",
-        "extracted_data": {
-            "store_information": {
-                "name": "Store Name",
-                "address": "Store Address",
-                "date": "2024-01-15",
-                "time": "10:30"
-            },
-            "line_items": [
-                {
-                    "name": "Item Name",
-                    "quantity": 1,
-                    "unit_price": 5.99,
-                    "total_price": 5.99,
-                    "category": "food"
-                }
-            ],
-            "financial_totals": {
-                "subtotal": 5.99,
-                "tax": 0.48,
-                "total": 6.47
-            },
-            "metadata": {
-                "confidence_level": "high",
-                "items_count": 1,
-                "processing_method": "gemini_vision_ocr"
-            }
-        }
-    }
+  }
 }
-
-# Other agents can easily consume this data
-expense_tracker.add_receipt(mcp_response["mcp_format"])
-budget_analyzer.process_spending(mcp_response["mcp_format"])
 ```
 
-## 🔧 Configuration
+## 🛠️ System Architecture
+
+```
+Multimodal Receipt Scanner
+├── 📁 Input Processing
+│   ├── 🖼️  Image Processor (PIL, OpenCV)
+│   ├── 🎥  Video Processor (OpenCV, frame extraction)
+│   ├── 📄  PDF Processor (PyMuPDF/fitz)
+│   ├── 📊  Excel Processor (pandas, openpyxl)
+│   └── 📝  Text Processor (regex, NLP)
+├── 🤖 AI Processing
+│   ├── 🔮  Gemini 2.5 Flash (images, videos)
+│   └── 🧠  LLM Enrichment (text, PDF, Excel)
+├── 💾 Storage System
+│   ├── 📄  JSON Storage (primary)
+│   ├── 🗄️  SQLite Index (search performance)
+│   └── 🔍  Search & Analytics Engine
+└── 📋 Output Generation
+    ├── 🏷️  MCP Format Compliance
+    ├── ✅  Data Validation (Pydantic)
+    └── 📊  Export Capabilities
+```
+
+## 🔧 Configuration & Setup
 
 ### Environment Variables
 
@@ -302,93 +335,155 @@ budget_analyzer.process_spending(mcp_response["mcp_format"])
 # Required: Google Gemini API Key
 export GOOGLE_API_KEY="your_api_key_here"
 
-# Optional: Custom model selection
-export GEMINI_MODEL="gemini-2.5-flash"  # Default model
+# Optional: Custom storage location
+export RECEIPT_STORAGE_DIR="/path/to/storage"
+
+# Optional: Model selection
+export GEMINI_MODEL="gemini-2.5-flash"
 ```
 
-### Custom Configuration
+### System Validation
 
 ```python
-# Customize the agent behavior
-from agent import receipt_scanner_agent
+from agent import validate_system_setup
 
-# Access the underlying tools
-receipt_scanner_agent.tools[0]  # process_receipt_image
-receipt_scanner_agent.tools[1]  # capture_and_scan_receipt
-receipt_scanner_agent.tools[2]  # analyze_receipt_trends
+# Check system readiness
+validation = await validate_system_setup()
 
-# Use with custom parameters
-result = process_receipt_image(
-    image_data="receipt.jpg",
-    image_format="file_path"
-)
+if validation["system_ready"]:
+    print("✅ System ready for processing")
+    print(f"Supported types: {validation['supported_input_types']}")
+else:
+    print("❌ System issues detected:")
+    print(f"Missing dependencies: {validation['missing_dependencies']}")
 ```
 
-## 🧪 Testing
+## 📱 Integration Examples
 
-### ADK Web Interface Testing (Recommended)
-```bash
-# Start the web interface
-adk web
+### Web Application Integration
 
-# Test in browser:
-# 1. Open http://localhost:8080
-# 2. Upload a receipt image or use camera
-# 3. View real-time processing results
-# 4. Download MCP-formatted data
+```javascript
+// Upload and process receipt
+const formData = new FormData();
+formData.append('receipt', fileInput.files[0]);
+
+const response = await fetch('/api/process-receipt', {
+    method: 'POST',
+    body: formData
+});
+
+const result = await response.json();
+if (result.status === 'success') {
+    console.log('Receipt processed:', result.summary);
+    console.log('Stored with ID:', result.summary.receipt_id);
+}
 ```
 
-### Programmatic Testing
+### Mobile App Integration
+
+```swift
+// iOS Swift example
+func processReceipt(image: UIImage) {
+    let base64String = image.jpegData(compressionQuality: 0.8)?.base64EncodedString()
+
+    let payload = [
+        "file_data": base64String,
+        "filename": "mobile_receipt.jpg",
+        "user_tags": ["mobile", "grocery"]
+    ]
+
+    // Send to your backend running the receipt scanner
+    APIClient.post("/process-receipt", data: payload) { result in
+        // Handle processed receipt data
+    }
+}
+```
+
+## 🧪 Testing & Examples
+
+### Run Example Scripts
+
 ```bash
+# Run comprehensive examples
 python example_usage.py
+
+# This will demonstrate:
+# - Processing all input types
+# - Storage and retrieval
+# - Search capabilities
+# - Analytics generation
+# - Export functionality
 ```
 
-This will demonstrate:
-- File path scanning
-- Base64 data processing
-- Trend analysis
-- Camera integration concepts
-- MCP format examples
+### Sample Files
 
-## 🏗️ Architecture
-
-```
-Receipt Scanner Agent
-├── agent.py                 # Main agent implementation
-├── requirements.txt         # Dependencies
-├── example_usage.py        # Usage examples
-└── README.md              # Documentation
-
-Core Components:
-├── process_receipt_image()    # Main OCR processing function
-├── capture_and_scan_receipt() # Camera integration stub
-├── analyze_receipt_trends()   # Analytics and insights
-└── receipt_scanner_agent     # ADK Agent instance
-```
+The example script creates sample files for testing:
+- `sample_receipt.txt` - Text receipt
+- `sample_expenses.csv` - Excel/CSV data
 
 ## 🔒 Security & Privacy
 
-- **API Key Security**: Store Google API keys securely using environment variables
-- **Image Data**: Receipt images are processed in memory and not stored permanently
-- **Data Privacy**: All extracted data remains within your system unless explicitly shared
-- **MCP Protocol**: Structured data sharing follows standardized protocols for security
+- **API Key Security**: Environment variable storage, no hardcoding
+- **Local Processing**: All data stored locally by default
+- **Data Privacy**: No data sent to external services except for AI processing
+- **MCP Compliance**: Structured, secure data exchange format
+- **Access Control**: File system permissions for storage directories
+
+## 📈 Performance & Scalability
+
+- **Async Processing**: Non-blocking operations for better performance
+- **SQLite Indexing**: Fast search across large receipt collections
+- **Batch Processing**: Handle multiple receipts efficiently
+- **Memory Management**: Optimized for large file processing
+- **Confidence Scoring**: Quality assessment for all extractions
+
+## 🆘 Troubleshooting
+
+### Common Issues
+
+1. **API Key Not Set**
+   ```bash
+   export GOOGLE_API_KEY="your_key_here"
+   ```
+
+2. **Missing Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Storage Permission Issues**
+   ```bash
+   mkdir -p receipt_storage
+   chmod 755 receipt_storage
+   ```
+
+4. **Large File Processing**
+   - PDFs: Uses PyMuPDF for superior text extraction and performance
+   - Videos: Limit to reasonable file sizes (< 100MB)
+   - Images: Automatic resizing for optimal processing
+
+### Debug Mode
+
+```python
+# Enable detailed logging
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Validate system setup
+validation = await validate_system_setup()
+print(json.dumps(validation, indent=2))
+```
 
 ## 🚀 Deployment Options
 
-### 1. Local Development with ADK Web
+### 1. Local Development
 ```bash
 cd receipt_scanner/
 adk web
-# Access via browser at http://localhost:8080
+# Access via http://localhost:8080
 ```
 
-### 2. Programmatic Testing
-```bash
-cd receipt_scanner/
-python example_usage.py
-```
-
-### 3. Production Deployment
+### 2. Production Deployment
 ```bash
 # ADK provides built-in production deployment
 adk deploy --platform=cloud-run
@@ -396,43 +491,65 @@ adk deploy --platform=cloud-run
 adk deploy --platform=kubernetes
 ```
 
-### 4. Custom Integration
+### 3. Custom API Server
 ```python
-# Import the agent into your existing application
-from multi_tool_agent.receipt_scanner.agent import receipt_scanner_agent
+# Create custom FastAPI server
+from fastapi import FastAPI, UploadFile
+from agent import process_multimodal_receipt
 
-# Use with your own web framework or API
-result = receipt_scanner_agent.process_receipt_image(image_data, "base64")
+app = FastAPI()
+
+@app.post("/process-receipt")
+async def process_receipt_endpoint(file: UploadFile):
+    result = await process_multimodal_receipt(
+        file_data=await file.read(),
+        filename=file.filename,
+        store_receipt=True
+    )
+    return result
 ```
+
+## 🔮 Future Enhancements
+
+- [ ] **Real-time Collaboration**: Multi-user receipt sharing
+- [ ] **Advanced Analytics**: Spending predictions and budgeting
+- [ ] **Integration APIs**: Connect with accounting software
+- [ ] **Mobile SDKs**: Native iOS and Android components
+- [ ] **Cloud Sync**: Optional cloud storage and sync
+- [ ] **Multi-language Support**: OCR and processing in multiple languages
+- [ ] **Receipt Validation**: Cross-reference with store databases
+- [ ] **Tax Integration**: Automatic tax category assignment
+- [ ] **Expense Reporting**: Generate formatted expense reports
+- [ ] **Subscription Tracking**: Detect and track recurring charges
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
+3. Implement your changes with tests
+4. Follow the coding standards (see requirements)
 5. Submit a pull request
 
 ## 📝 License
 
 This project is licensed under the Apache License 2.0 - see the LICENSE file for details.
 
-## 🆘 Support
+## 🎯 Support
 
-- **Issues**: Report bugs and feature requests in the project issues
-- **Documentation**: Check this README and example_usage.py for guidance
-- **Community**: Join discussions about Google ADK and Gemini Vision AI
-
-## 🔮 Future Enhancements
-
-- [ ] Real-time camera preview with scanning overlay
-- [ ] Multi-language receipt support
-- [ ] Advanced analytics dashboard
-- [ ] Integration with popular expense tracking apps
-- [ ] Batch processing for multiple receipts
-- [ ] Custom category training
-- [ ] Receipt validation and correction tools
+- **Issues**: Report bugs and feature requests
+- **Documentation**: Check example_usage.py for detailed examples
+- **Community**: Join discussions about ADK and Gemini Vision AI
 
 ---
 
-**Built with ❤️ using Google Agent Development Kit and Gemini Vision AI**
+**🧾 Built with ❤️ using Google Agent Development Kit, Gemini 2.5 Flash, and comprehensive multimodal AI processing**
+
+### Key Benefits
+
+✅ **Comprehensive**: Handles all major receipt formats and sources
+✅ **Accurate**: High-confidence extraction with AI-powered categorization
+✅ **Fast**: Optimized processing with async operations and caching
+✅ **Scalable**: SQLite indexing and batch processing capabilities
+✅ **Secure**: Local storage with optional cloud integration
+✅ **Developer-Friendly**: Rich APIs, examples, and documentation
+✅ **Production-Ready**: Robust error handling and validation
