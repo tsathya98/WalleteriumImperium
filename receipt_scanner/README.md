@@ -57,7 +57,7 @@ adk web
 # Open the provided URL in your browser (usually http://localhost:8080)
 # The interface provides:
 # - 📸 Camera capture from browser
-# - 📁 Drag & drop file upload  
+# - 📁 Drag & drop file upload
 # - 🔍 Real-time receipt processing
 # - 📊 MCP-formatted results
 # - 📈 Analytics dashboard
@@ -159,7 +159,7 @@ const captureReceipt = () => {
   launchImageLibrary({ mediaType: 'photo' }, (response) => {
     if (response.assets && response.assets[0]) {
       const base64Data = response.assets[0].base64;
-      
+
       // Send to Python backend
       fetch('http://your-backend/scan-receipt', {
         method: 'POST',
@@ -183,15 +183,15 @@ const captureReceiptFromCamera = async () => {
   const video = document.createElement('video');
   video.srcObject = stream;
   video.play();
-  
+
   // Capture frame to canvas
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
   context.drawImage(video, 0, 0, canvas.width, canvas.height);
-  
+
   // Convert to base64
   const base64Data = canvas.toDataURL('image/jpeg').split(',')[1];
-  
+
   // Send to backend for processing
   const response = await fetch('/api/scan-receipt', {
     method: 'POST',
@@ -201,7 +201,7 @@ const captureReceiptFromCamera = async () => {
       image_format: 'base64'
     })
   });
-  
+
   const result = await response.json();
   console.log('Receipt data:', result);
 };
@@ -217,32 +217,32 @@ from agent import process_receipt_image
 def capture_and_scan_receipt():
     # Initialize camera
     cap = cv2.VideoCapture(0)
-    
+
     print("Press SPACE to capture receipt, ESC to exit")
-    
+
     while True:
         ret, frame = cap.read()
         if not ret:
             break
-            
+
         cv2.imshow('Receipt Scanner - Press SPACE to capture', frame)
-        
+
         key = cv2.waitKey(1) & 0xFF
         if key == ord(' '):  # Spacebar to capture
             # Save captured frame
             cv2.imwrite('captured_receipt.jpg', frame)
-            
+
             # Process the receipt
             result = process_receipt_image(
-                'captured_receipt.jpg', 
+                'captured_receipt.jpg',
                 image_format='file_path'
             )
-            
+
             print("Scan result:", result)
             break
         elif key == 27:  # ESC to exit
             break
-    
+
     cap.release()
     cv2.destroyAllWindows()
 ```
@@ -314,7 +314,7 @@ from agent import receipt_scanner_agent
 
 # Access the underlying tools
 receipt_scanner_agent.tools[0]  # process_receipt_image
-receipt_scanner_agent.tools[1]  # capture_and_scan_receipt  
+receipt_scanner_agent.tools[1]  # capture_and_scan_receipt
 receipt_scanner_agent.tools[2]  # analyze_receipt_trends
 
 # Use with custom parameters
@@ -435,4 +435,4 @@ This project is licensed under the Apache License 2.0 - see the LICENSE file for
 
 ---
 
-**Built with ❤️ using Google Agent Development Kit and Gemini Vision AI** 
+**Built with ❤️ using Google Agent Development Kit and Gemini Vision AI**
