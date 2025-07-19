@@ -1,0 +1,48 @@
+fail_fast: true
+default_stages: [pre-commit]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-ast
+        language_version: python3.12
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: trailing-whitespace
+        exclude: ^.github/
+      - id: mixed-line-ending
+        exclude: ^.github/
+      - id: end-of-file-fixer
+        exclude: ^.github/
+      - id: check-yaml
+      - id: "no-commit-to-branch"
+        args: [--branch, master, --branch, develop]
+      - id: requirements-txt-fixer
+      - id: check-toml
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v2.1.1
+    hooks:
+      - id: conventional-pre-commit
+        always_run: true
+        stages: [commit-msg]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6
+    hooks:
+      - id: ruff-format
+        name: ruff-format
+        files: \.py$
+      - id: ruff
+        name: ruff
+        files: \.py$
+        args: [--fix, --exit-non-zero-on-fix]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.7.0
+    hooks:
+      - id: mypy
+        files: \.py$
+        additional_dependencies:
+          - "pydantic"
+          - "sqlalchemy[mypy]"
+          - "strawberry-graphql[mypy]"
+        args: [--show-traceback, --install-types, --non-interactive, --ignore-missing-imports]
+#Add more hooks as needed
