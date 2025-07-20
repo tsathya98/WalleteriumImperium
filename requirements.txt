@@ -1,6 +1,5 @@
 google-adk
 google-generativeai
-mimetypes
 opencv-python
 openpyxl
 pandas
