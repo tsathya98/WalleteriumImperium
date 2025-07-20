@@ -82,8 +82,8 @@ async def save_receipt_to_database(
         try:
             parsed_date = datetime.datetime.strptime(transaction_date, "%Y-%m-%d")
             transaction_details = TransactionDetails(
-                date=parsed_date.date(),
-                time=parsed_date.time() if parsed_date.hour or parsed_date.minute else None,
+                date=parsed_date.strftime("%Y-%m-%d"),
+                time=parsed_date.strftime("%H:%M:%S") if parsed_date.hour or parsed_date.minute else None,
                 currency=currency,
                 transaction_id=receipt_number
             )
@@ -91,8 +91,8 @@ async def save_receipt_to_database(
             # Fallback to current date if parsing fails
             now = datetime.datetime.now()
             transaction_details = TransactionDetails(
-                date=now.date(),
-                time=now.time(),
+                date=now.strftime("%Y-%m-%d"),
+                time=now.strftime("%H:%M:%S"),
                 currency=currency,
                 transaction_id=receipt_number
             )
