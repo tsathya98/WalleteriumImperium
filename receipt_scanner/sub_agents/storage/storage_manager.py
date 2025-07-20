@@ -15,7 +15,7 @@ from dataclasses import dataclass
 import sqlite3
 from contextlib import contextmanager
 
-from .models import ProcessedReceipt
+from ...models import ProcessedReceipt
 
 
 @dataclass

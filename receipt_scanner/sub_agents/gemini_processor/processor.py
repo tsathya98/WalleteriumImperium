@@ -20,7 +20,7 @@ try:
 except ImportError:
     HAS_GEMINI = False
 
-from .models import (
+from ...models import (
     ProcessedReceipt,
     MCPFormat,
     ReceiptPayload,

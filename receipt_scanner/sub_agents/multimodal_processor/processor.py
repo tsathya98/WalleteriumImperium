@@ -24,7 +24,7 @@ import pandas as pd
 from PIL import Image
 import fitz
 
-from .models import InputType, ProcessingMetadata, ProcessorModel, create_receipt_id
+from ...models import InputType, ProcessingMetadata, ProcessorModel, create_receipt_id
 
 
 class InputProcessor:
