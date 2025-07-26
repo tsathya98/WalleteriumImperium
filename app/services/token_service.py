@@ -59,7 +59,7 @@ class TokenService:
             raise RuntimeError("Token service not initialized")
     
     @log_async_performance(logger)
-    async def create_processing_token(self, user_id: str, image_base64: str) -> str:
+    async def create_processing_token(self, user_id: str, media_base64: str, media_type: str) -> str:
         """Create a new processing token and start background processing"""
         self._ensure_initialized()
         
@@ -69,7 +69,7 @@ class TokenService:
             
             # Start background processing
             processing_task = asyncio.create_task(
-                self._process_receipt_background(token, user_id, image_base64)
+                self._process_receipt_background(token, user_id, media_base64, media_type)
             )
             
             # Track the task
@@ -120,10 +120,10 @@ class TokenService:
             raise
 
     @log_async_performance(logger)
-    async def _process_receipt_background(self, token: str, user_id: str, image_base64: str):
+    async def _process_receipt_background(self, token: str, user_id: str, media_base64: str, media_type: str):
         """
         Background receipt processing with progress updates
-        MVP: Simplified 2-stage process with realistic timing
+        Supports both image and video analysis
         """
         try:
             logger.info("Starting background receipt processing (MVP)", extra={
@@ -141,8 +141,8 @@ class TokenService:
             
             # Process with Enhanced Vertex AI service using injected service
             if self._vertex_ai_service:
-                ai_result = await self._vertex_ai_service.analyze_receipt_image(
-                    image_base64, user_id
+                ai_result = await self._vertex_ai_service.analyze_receipt_media(
+                    media_base64, media_type, user_id
                 )
                 # Transform AI result to ReceiptAnalysis model
                 processing_result = self._transform_ai_result_to_receipt_analysis(ai_result, token)
@@ -150,8 +150,8 @@ class TokenService:
                 # Fallback to get_vertex_ai_service if not injected
                 from app.services.vertex_ai_service import get_vertex_ai_service
                 vertex_ai_service = get_vertex_ai_service()
-                ai_result = await vertex_ai_service.analyze_receipt_image(
-                    image_base64, user_id
+                ai_result = await vertex_ai_service.analyze_receipt_media(
+                    media_base64, media_type, user_id
                 )
                 processing_result = self._transform_ai_result_to_receipt_analysis(ai_result, token)
             

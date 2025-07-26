@@ -113,22 +113,11 @@ class ReceiptAnalysis(BaseModel):
             raise ValueError("time must be in ISO 8601 format")
 
 
-# Request Models
-class ReceiptUploadRequest(BaseModel):
-    """Request model for receipt upload"""
-    image_base64: str = Field(..., description="Base64 encoded receipt image")
+# Request Models for Multipart Form Data
+class ReceiptUploadMetadata(BaseModel):
+    """Metadata for receipt upload (sent as form field)"""
     user_id: str = Field(..., description="User ID from Firebase Auth")
     metadata: Optional[Dict[str, Any]] = Field(default={}, description="Optional metadata")
-    
-    @field_validator("image_base64")
-    @classmethod
-    def validate_image_base64(cls, v: str) -> str:
-        try:
-            import base64
-            base64.b64decode(v, validate=True)
-            return v
-        except Exception:
-            raise ValueError("Invalid base64 image data")
     
     @field_validator("user_id")
     @classmethod
@@ -136,6 +125,8 @@ class ReceiptUploadRequest(BaseModel):
         if not v or len(v.strip()) == 0:
             raise ValueError("User ID cannot be empty")
         return v.strip()
+    
+
 
 
 # Response Models

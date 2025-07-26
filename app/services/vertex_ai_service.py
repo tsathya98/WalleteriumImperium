@@ -150,13 +150,14 @@ class VertexAIReceiptService:
             logger.error("Failed to initialize Vertex AI", extra={"error": str(e)})
             raise
     
-    def _create_optimized_prompt(self) -> str:
+    def _create_optimized_prompt(self, media_type: str) -> str:
         """
         Creates an optimized prompt for receipt analysis
         The prompt is designed to work with the JSON schema for maximum accuracy
         """
-        return """
-You are an expert receipt analysis AI. Analyze this receipt image and extract ALL information accurately.
+        media_instruction = "receipt image" if media_type == "image" else "receipt video"
+        return f"""
+You are an expert receipt analysis AI. Analyze this {media_instruction} and extract ALL information accurately.
 
 CRITICAL INSTRUCTIONS:
 1. Extract EVERY visible item with exact names, quantities, and prices
@@ -165,6 +166,7 @@ CRITICAL INSTRUCTIONS:
 4. For missing information, use appropriate fallback values (see below)
 5. Ensure all numbers are positive and realistic
 6. Date format: YYYY-MM-DD, Time format: HH:MM
+{"7. VIDEO ANALYSIS: If this is a video, analyze ALL frames to find the clearest view of the receipt. Use the best frame(s) with the most readable text." if media_type == "video" else ""}
 
 FALLBACK VALUES FOR MISSING INFORMATION:
 - address: Use "Not provided" if store address not visible
@@ -195,17 +197,19 @@ ITEM CATEGORIES:
 Return ONLY valid JSON matching the required schema. No additional text or formatting.
 """
     
-    async def analyze_receipt_image(
+    async def analyze_receipt_media(
         self, 
-        image_base64: str, 
+        media_base64: str, 
+        media_type: str,
         user_id: str,
         retry_count: int = 0
     ) -> Dict[str, Any]:
         """
-        Analyze receipt image using Gemini 2.5 Flash with guaranteed JSON output
+        Analyze receipt media (image or video) using Gemini 2.5 Flash with guaranteed JSON output
         
         Args:
-            image_base64: Base64 encoded receipt image
+            media_base64: Base64 encoded receipt image or video
+            media_type: Type of media ('image' or 'video')
             user_id: User ID for logging
             retry_count: Current retry attempt number
             
@@ -216,19 +220,25 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
             logger.info("Starting receipt analysis", extra={
                 "user_id": user_id,
                 "retry_count": retry_count,
-                "image_size_kb": len(image_base64) * 3 / 4 / 1024
+                "media_type": media_type,
+                "media_size_kb": len(media_base64) * 3 / 4 / 1024
             })
             
-            # Validate and prepare image
-            image_data = self._prepare_image(image_base64)
+            # Validate and prepare media
+            if media_type == "image":
+                media_data, mime_type = self._prepare_image(media_base64)
+            elif media_type == "video":
+                media_data, mime_type = self._prepare_video(media_base64)
+            else:
+                raise ValueError(f"Unsupported media type: {media_type}")
             
-            # Create the prompt
-            prompt = self._create_optimized_prompt()
+            # Create the prompt (enhanced for video support)
+            prompt = self._create_optimized_prompt(media_type)
             
             # Prepare the content for Gemini
             contents = [
                 prompt,
-                Part.from_data(data=image_data, mime_type="image/jpeg")
+                Part.from_data(data=media_data, mime_type=mime_type)
             ]
             
             # Generate content with schema enforcement
@@ -283,7 +293,7 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                     "retry_count": retry_count + 1
                 })
                 await asyncio.sleep(1)  # Brief delay before retry
-                return await self.analyze_receipt_image(image_base64, user_id, retry_count + 1)
+                return await self.analyze_receipt_media(media_base64, media_type, user_id, retry_count + 1)
             
             raise ValueError(f"Failed to get valid JSON after {self.max_retries} retries")
             
@@ -300,11 +310,13 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                     "retry_count": retry_count + 1
                 })
                 await asyncio.sleep(2 ** retry_count)  # Exponential backoff
-                return await self.analyze_receipt_image(image_base64, user_id, retry_count + 1)
+                return await self.analyze_receipt_media(media_base64, media_type, user_id, retry_count + 1)
             
             raise
     
-    def _prepare_image(self, image_base64: str) -> bytes:
+
+    
+    def _prepare_image(self, image_base64: str) -> tuple[bytes, str]:
         """
         Prepare and validate the image for analysis
         
@@ -312,7 +324,7 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
             image_base64: Base64 encoded image
             
         Returns:
-            Image bytes ready for Gemini
+            Tuple of (image bytes, mime type) ready for Gemini
         """
         try:
             # Decode base64
@@ -335,11 +347,58 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                 image.save(output_buffer, format='JPEG', quality=90, optimize=True)
                 image_bytes = output_buffer.getvalue()
             
-            return image_bytes
+            return image_bytes, "image/jpeg"
             
         except Exception as e:
             logger.error("Image preparation failed", extra={"error": str(e)})
             raise ValueError(f"Invalid image data: {str(e)}")
+    
+    def _prepare_video(self, video_base64: str) -> tuple[bytes, str]:
+        """
+        Prepare and validate the video for analysis
+        
+        Args:
+            video_base64: Base64 encoded video
+            
+        Returns:
+            Tuple of (video bytes, mime type) ready for Gemini
+        """
+        try:
+            # Decode base64
+            video_bytes = base64.b64decode(video_base64)
+            
+            # Validate video size (larger limit for videos)
+            video_size_mb = len(video_bytes) / 1024 / 1024
+            max_video_size = 100  # 100MB limit for videos
+            
+            if video_size_mb > max_video_size:
+                logger.warning("Video too large", extra={
+                    "size_mb": video_size_mb,
+                    "max_size_mb": max_video_size
+                })
+                raise ValueError(f"Video too large: {video_size_mb:.1f}MB. Maximum size: {max_video_size}MB")
+            
+            # Determine video format from the first few bytes
+            if video_bytes.startswith(b'\x00\x00\x00'):
+                mime_type = "video/mp4"
+            elif video_bytes.startswith(b'ftypqt'):
+                mime_type = "video/quicktime"
+            elif video_bytes.startswith(b'RIFF'):
+                mime_type = "video/avi"
+            else:
+                # Default to mp4 for unknown formats
+                mime_type = "video/mp4"
+            
+            logger.info("Video prepared for analysis", extra={
+                "size_mb": video_size_mb,
+                "mime_type": mime_type
+            })
+            
+            return video_bytes, mime_type
+            
+        except Exception as e:
+            logger.error("Video preparation failed", extra={"error": str(e)})
+            raise ValueError(f"Invalid video data: {str(e)}")
     
     def _validate_analysis_result(self, result: Dict[str, Any]) -> None:
         """

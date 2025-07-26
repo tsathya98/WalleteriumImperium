@@ -21,9 +21,13 @@ httpx
 aiohttp
 requests
 
-# Image processing
+# Image and Video processing
 Pillow
 opencv-python
+
+# Video processing (optional, for creating test videos)
+# Install with: pip install opencv-python
+# Used in test_video_receipt.py for creating synthetic videos
 
 # Utilities
 typing-extensions

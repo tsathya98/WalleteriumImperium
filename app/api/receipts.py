@@ -3,6 +3,7 @@ Receipt processing API endpoints for Project Raseed
 Handles receipt upload, processing, and status tracking
 """
 
+import json
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime
@@ -53,53 +54,90 @@ async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] =
 @router.post("/upload", response_model=ReceiptUploadResponse, status_code=202)
 @log_async_performance(logger)
 async def upload_receipt(
-    request: ReceiptUploadRequest,
-    http_request: Request,
+    file: UploadFile = File(..., description="Receipt image or video file"),
+    user_id: str = Form(..., description="User ID from Firebase Auth"),
+    metadata: Optional[str] = Form(default="{}", description="Optional metadata as JSON string"),
+    http_request: Request = None,
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Upload receipt image for processing
+    Upload receipt image or video file for AI analysis
     
-    This endpoint:
-    1. Validates the uploaded image
-    2. Creates a processing token
-    3. Starts background AI processing
-    4. Returns immediately with token for status polling
+    This endpoint accepts multipart file uploads and returns a processing token.
+    The client should poll the status endpoint to get results.
     
-    The actual processing happens asynchronously to avoid API gateway timeouts.
+    Args:
+        file: UploadFile containing the receipt image or video
+        user_id: User ID from Firebase Auth  
+        metadata: Optional metadata as JSON string
+        http_request: FastAPI request object for accessing app state
+        current_user: Authenticated user information
+    
+    Returns:
+        ReceiptUploadResponse with processing token and estimated time
+        
+    Raises:
+        HTTPException: For validation errors, file size limits, or processing failures
     """
     try:
+        # Parse metadata from JSON string
+        try:
+            metadata_dict = json.loads(metadata) if metadata else {}
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid metadata JSON format"
+            )
+        
+        # Determine media type from file extension
+        file_extension = Path(file.filename or "").suffix.lower()
+        if file_extension in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
+            media_type = "image"
+        elif file_extension in ['.mp4', '.mov', '.avi', '.mkv', '.webm']:
+            media_type = "video"
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type: {file_extension}. Supported: images (.jpg, .png) and videos (.mp4, .mov, .avi)"
+            )
+        
+        # Read file content
+        file_content = await file.read()
+        file_size_mb = len(file_content) / 1024 / 1024
+        
         logger.info("Receipt upload started", extra={
             "user_id": current_user["uid"],
-            "image_size_kb": len(request.image_base64) * 3 / 4 / 1024,
-            "metadata": request.metadata
+            "filename": file.filename,
+            "media_type": media_type,
+            "file_size_mb": file_size_mb,
+            "metadata": metadata_dict
         })
         
-        # Validate image size
-        image_size_mb = len(request.image_base64) * 3 / 4 / 1024 / 1024
-        if image_size_mb > settings.MAX_IMAGE_SIZE_MB:
+        # Validate file size based on type
+        max_size_mb = settings.MAX_IMAGE_SIZE_MB if media_type == "image" else 100  # 100MB for videos
+        
+        if file_size_mb > max_size_mb:
             raise HTTPException(
                 status_code=400,
-                detail=f"Image too large. Maximum size: {settings.MAX_IMAGE_SIZE_MB}MB"
+                detail=f"{media_type.title()} too large ({file_size_mb:.2f}MB). Maximum size: {max_size_mb}MB"
             )
         
-        # Validate base64 format
-        try:
-            base64.b64decode(request.image_base64, validate=True)
-        except Exception:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid base64 image format"
-            )
+        # Convert file content to base64 for internal processing
+        # (Vertex AI still requires base64, but we do the conversion internally)
+        media_base64 = base64.b64encode(file_content).decode('utf-8')
         
         # Create processing token and start background processing
         processing_token = await http_request.app.state.token_service.create_processing_token(
             user_id=current_user["uid"],
-            image_base64=request.image_base64
+            media_base64=media_base64,
+            media_type=media_type
         )
         
-        # Calculate estimated processing time
-        estimated_time = min(settings.PROCESSING_TIMEOUT, 30)  # Cap at 30 seconds for UI
+        # Estimate processing time based on media type and size
+        if media_type == "image":
+            estimated_time = min(30, max(10, int(file_size_mb * 2)))  # 10-30 seconds for images
+        else:
+            estimated_time = min(60, max(20, int(file_size_mb * 1.5)))  # 20-60 seconds for videos
         
         response = ReceiptUploadResponse(
             processing_token=processing_token,
