@@ -214,7 +214,7 @@ async def get_processing_status(
         response = ReceiptStatusResponse(
             token=token,
             status=token_data.status,
-            progress=ProcessingProgress(**token_data.progress),
+            progress=token_data.progress,
             result=token_data.result,
             error=token_data.error,
             created_at=token_data.created_at,
@@ -227,7 +227,7 @@ async def get_processing_status(
             extra={
                 "token": token,
                 "status": token_data.status.value,
-                "progress": token_data.progress.get("percentage", 0),
+                "progress": token_data.progress.percentage,
             },
         )
 

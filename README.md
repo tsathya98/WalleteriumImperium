@@ -78,19 +78,122 @@ curl -X POST "http://localhost:8080/api/v1/receipts/upload" \
 
 ---
 
-## 📊 **Expected Results**
+## 🤖 **AI Processing Deep Dive**
 
-Your analysis returns structured data:
+The core of this system is its ability to transform a receipt image or video into structured JSON data using Gemini 2.5 Flash. This process is designed to be robust, efficient, and reliable, leveraging schema enforcement to guarantee the output format.
+
+### **Sequence of Events**
+
+Here is a step-by-step visualization of the entire process from upload to result:
+
+```mermaid
+sequenceDiagram
+    participant Client as 📱 Client<br>(Flutter/Browser)
+    participant FastAPI as 🌐 FastAPI Backend<br>(/upload endpoint)
+    participant TokenService as 🎫 Token Service
+    participant VertexAIService as 🤖 Vertex AI Service
+    participant Gemini as ✨ Gemini 2.5 Flash
+    participant Firestore as 🔥 Firestore DB
+
+    Client->>+FastAPI: POST /upload (multipart file)
+    FastAPI->>+TokenService: create_processing_token(file_bytes)
+    TokenService->>+Firestore: create_token(user_id)
+    Firestore-->>-TokenService: token_id
+    TokenService-->>-FastAPI: return token_id
+    FastAPI-->>-Client: 202 Accepted (token_id)
+
+    Note over TokenService,Firestore: Background processing starts...
+    TokenService->>+VertexAIService: analyze_receipt_media(file_bytes)
+    VertexAIService->>VertexAIService: 1. Create Optimized Prompt
+    VertexAIService->>VertexAIService: 2. Define JSON Schema
+    VertexAIService->>+Gemini: 3. Send (Prompt + Schema + Media)
+    Gemini-->>-VertexAIService: 4. Return Structured JSON
+    VertexAIService-->>-TokenService: Detailed AI Result (JSON)
+
+    TokenService->>TokenService: 5. Transform AI JSON to App Model
+    TokenService->>+Firestore: 6. Update token with final result
+    Firestore-->>-TokenService: Acknowledge update
+
+    loop Periodically
+        Client->>+FastAPI: GET /status/{token_id}
+        FastAPI->>+Firestore: get_token_status(token_id)
+        Firestore-->>-FastAPI: Return current status/result
+        FastAPI-->>-Client: Return final JSON result
+    end
+```
+
+### **How the LLM Call Works (Step-by-Step)**
+
+1.  **File Ingestion (FastAPI Endpoint)**:
+    *   The client uploads a media file (image or video) via a standard `multipart/form-data` request.
+    *   The backend reads the file into memory and converts it to a base64 string. This conversion happens **internally**, so the client benefits from efficient binary uploads.
+
+2.  **Background Task Delegation (Token Service)**:
+    *   The `TokenService` creates a unique token in Firestore and immediately starts a background task. This allows the API to respond instantly to the client without waiting for the AI processing to finish.
+    *   The background task calls the `VertexAIReceiptService` to perform the core analysis.
+
+3.  **Prompt & Schema Engineering (Vertex AI Service)**:
+    *   This is where the "magic" happens. Before calling the LLM, the service constructs a request with three key components:
+        *   **A. Optimized Prompt**: A detailed set of instructions telling the AI its role ("You are an expert receipt analysis AI..."), critical instructions (extract every item, calculate totals precisely), and how to handle missing information (use fallback values like "Unknown").
+        *   **B. The Media**: The base64-encoded image or video of the receipt.
+        *   **C. JSON Schema**: A strict definition of the desired JSON output format. This schema details every field (e.g., `store_info`, `items`, `totals`), their data types (`string`, `number`, `array`), required fields, and even formatting rules (e.g., date format `YYYY-MM-DD`).
+
+4.  **Guaranteed JSON with Gemini 2.5 Flash**:
+    *   These three components are sent to the Gemini 2.5 Flash model via the Vertex AI SDK.
+    *   By providing the **JSON Schema**, we are using one of Gemini's most powerful features: **schema enforcement**. The model is forced to generate a JSON object that strictly conforms to the provided schema. This eliminates the need for fragile string parsing and ensures the output is always predictable and valid. The model doesn't just "try" to return JSON; it *must* return JSON that passes validation against the schema.
+
+5.  **Data Transformation Layer**:
+    *   The structured JSON returned by Gemini is highly detailed but may not perfectly match our final application's data model.
+    *   The `TokenService` takes this raw AI result and runs it through a transformation layer (`_transform_ai_result_to_receipt_analysis`). This step is crucial for business logic:
+        *   It **normalizes data** (e.g., parses dates and times into a consistent ISO 8601 format).
+        *   It **infers categories** (e.g., determines the overall category like "Dining" or "Groceries" based on the list of extracted items). *Note: This is an area for continuous improvement, as seen in the example where a restaurant was categorized as "Groceries". The logic can be refined over time.*
+        *   It **generates descriptions** (e.g., "4 items from El Chalan Restaurant").
+        *   It performs **heuristic analysis** to guess at `warranty` or `recurring` status based on item names.
+        *   It calculates metadata like `processing_time`.
+
+6.  **Finalization**:
+    *   The transformed, application-ready data is saved back to Firestore, and the token's status is updated to `"completed"`.
+    *   The next time the client polls the `/status` endpoint, it receives the final, clean JSON object.
+
+---
+
+## 📊 **Expected Results (Based on Your Test)**
+
+Your analysis returns a rich, structured data object. The successful test run produced the following result, which is now the new benchmark for expected output:
+
 ```json
 {
-  "place": "El Chalan Restaurant",
-  "amount": 25.50,
-  "category": "dining",
-  "description": "Restaurant - Peruvian cuisine",
-  "time": "2024-01-15T19:30:00Z",
-  "transactionType": "expense"
+    "token": "d2116b7d-2edb-46f6-b2ee-9f2b0ba8c270",
+    "status": "completed",
+    "progress": {
+        "stage": "completed",
+        "percentage": 100,
+        "message": "Processing completed successfully!",
+        "estimated_remaining": 0
+    },
+    "result": {
+        "place": "El Chalan Restaurant",
+        "time": "2016-03-12T13:13:00Z",
+        "amount": 49.52,
+        "transactionType": "debit",
+        "category": "Groceries",
+        "description": "4 items from El Chalan Restaurant",
+        "importance": "medium",
+        "warranty": false,
+        "recurring": false,
+        "subscription": null,
+        "warrantyDetails": null,
+        "receipt_id": "d2116b7d-2edb-46f6-b2ee-9f2b0ba8c270",
+        "processing_time": null
+    },
+    "error": null,
+    "created_at": "2025-07-26T13:45:10.956233Z",
+    "updated_at": "2025-07-26T13:45:29.059817Z",
+    "expires_at": "2025-07-26T13:55:10.956233Z"
 }
 ```
+
+This JSON object is the final product of the entire AI processing pipeline, ready for use in a frontend application or for further data analysis.
 
 ---
 
