@@ -7,13 +7,12 @@ import json
 import base64
 import asyncio
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 from PIL import Image
 import io
 
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part, GenerationConfig
-from google.cloud import aiplatform
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -33,19 +32,43 @@ class ReceiptAnalysisSchema:
         """
         return {
             "type": "object",
-            "required": ["store_info", "items", "totals", "confidence", "processing_metadata"],
+            "required": [
+                "store_info",
+                "items",
+                "totals",
+                "confidence",
+                "processing_metadata",
+            ],
             "properties": {
                 "store_info": {
                     "type": "object",
                     "required": ["name"],
                     "properties": {
-                        "name": {"type": "string", "description": "Store or merchant name"},
-                        "address": {"type": "string", "description": "Store address if visible"},
-                        "phone": {"type": "string", "description": "Phone number if visible"},
-                        "date": {"type": "string", "description": "Transaction date (YYYY-MM-DD format)"},
-                        "time": {"type": "string", "description": "Transaction time (HH:MM format)"},
-                        "receipt_number": {"type": "string", "description": "Receipt/transaction number"}
-                    }
+                        "name": {
+                            "type": "string",
+                            "description": "Store or merchant name",
+                        },
+                        "address": {
+                            "type": "string",
+                            "description": "Store address if visible",
+                        },
+                        "phone": {
+                            "type": "string",
+                            "description": "Phone number if visible",
+                        },
+                        "date": {
+                            "type": "string",
+                            "description": "Transaction date (YYYY-MM-DD format)",
+                        },
+                        "time": {
+                            "type": "string",
+                            "description": "Transaction time (HH:MM format)",
+                        },
+                        "receipt_number": {
+                            "type": "string",
+                            "description": "Receipt/transaction number",
+                        },
+                    },
                 },
                 "items": {
                     "type": "array",
@@ -54,54 +77,107 @@ class ReceiptAnalysisSchema:
                         "required": ["name", "quantity", "unit_price", "total_price"],
                         "properties": {
                             "name": {"type": "string", "description": "Item name"},
-                            "quantity": {"type": "number", "minimum": 0, "description": "Item quantity"},
-                            "unit_price": {"type": "number", "minimum": 0, "description": "Price per unit"},
-                            "total_price": {"type": "number", "minimum": 0, "description": "Total price for this item"},
+                            "quantity": {
+                                "type": "number",
+                                "minimum": 0,
+                                "description": "Item quantity",
+                            },
+                            "unit_price": {
+                                "type": "number",
+                                "minimum": 0,
+                                "description": "Price per unit",
+                            },
+                            "total_price": {
+                                "type": "number",
+                                "minimum": 0,
+                                "description": "Total price for this item",
+                            },
                             "category": {
                                 "type": "string",
-                                "enum": ["food", "beverage", "household", "personal_care", "electronics", "clothing", "pharmacy", "other"],
-                                "description": "Item category"
+                                "enum": [
+                                    "food",
+                                    "beverage",
+                                    "household",
+                                    "personal_care",
+                                    "electronics",
+                                    "clothing",
+                                    "pharmacy",
+                                    "other",
+                                ],
+                                "description": "Item category",
                             },
-                            "tax_applied": {"type": "boolean", "description": "Whether tax was applied to this item"}
-                        }
-                    }
+                            "tax_applied": {
+                                "type": "boolean",
+                                "description": "Whether tax was applied to this item",
+                            },
+                        },
+                    },
                 },
                 "totals": {
                     "type": "object",
                     "required": ["total"],
                     "properties": {
-                        "subtotal": {"type": "number", "minimum": 0, "description": "Subtotal amount"},
-                        "tax": {"type": "number", "minimum": 0, "description": "Tax amount"},
-                        "discount": {"type": "number", "minimum": 0, "description": "Discount amount"},
-                        "total": {"type": "number", "minimum": 0, "description": "Final total amount"},
+                        "subtotal": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Subtotal amount",
+                        },
+                        "tax": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Tax amount",
+                        },
+                        "discount": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Discount amount",
+                        },
+                        "total": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Final total amount",
+                        },
                         "payment_method": {
                             "type": "string",
                             "enum": ["cash", "card", "mobile", "other", "unknown"],
-                            "description": "Payment method if visible"
-                        }
-                    }
+                            "description": "Payment method if visible",
+                        },
+                    },
                 },
                 "confidence": {
                     "type": "string",
                     "enum": ["high", "medium", "low"],
-                    "description": "Overall confidence level in the extraction accuracy"
+                    "description": "Overall confidence level in the extraction accuracy",
                 },
                 "processing_metadata": {
                     "type": "object",
                     "required": ["timestamp", "model_version"],
                     "properties": {
-                        "timestamp": {"type": "string", "description": "Processing timestamp (ISO 8601)"},
-                        "model_version": {"type": "string", "description": "Gemini model version used"},
-                        "items_count": {"type": "number", "description": "Number of items extracted"},
+                        "timestamp": {
+                            "type": "string",
+                            "description": "Processing timestamp (ISO 8601)",
+                        },
+                        "model_version": {
+                            "type": "string",
+                            "description": "Gemini model version used",
+                        },
+                        "items_count": {
+                            "type": "number",
+                            "description": "Number of items extracted",
+                        },
                         "image_quality": {
                             "type": "string",
                             "enum": ["excellent", "good", "fair", "poor"],
-                            "description": "Assessed image quality"
+                            "description": "Assessed image quality",
                         },
-                        "retry_count": {"type": "number", "minimum": 0, "description": "Number of processing retries"}
-                    }
-                }
-            }
+                        "retry_count": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Number of processing retries",
+                        },
+                    },
+                },
+            },
         }
 
 
@@ -131,20 +207,22 @@ class VertexAIReceiptService:
                 candidate_count=1,
                 max_output_tokens=8192,
                 response_mime_type="application/json",
-                response_schema=ReceiptAnalysisSchema.get_schema()
+                response_schema=ReceiptAnalysisSchema.get_schema(),
             )
 
             # Initialize the model with our schema
             self.model = GenerativeModel(
-                model_name=self.model_name,
-                generation_config=generation_config
+                model_name=self.model_name, generation_config=generation_config
             )
 
-            logger.info("Vertex AI initialized successfully", extra={
-                "project_id": self.project_id,
-                "location": self.location,
-                "model": self.model_name
-            })
+            logger.info(
+                "Vertex AI initialized successfully",
+                extra={
+                    "project_id": self.project_id,
+                    "location": self.location,
+                    "model": self.model_name,
+                },
+            )
 
         except Exception as e:
             logger.error("Failed to initialize Vertex AI", extra={"error": str(e)})
@@ -155,7 +233,9 @@ class VertexAIReceiptService:
         Creates an optimized prompt for receipt analysis
         The prompt is designed to work with the JSON schema for maximum accuracy
         """
-        media_instruction = "receipt image" if media_type == "image" else "receipt video"
+        media_instruction = (
+            "receipt image" if media_type == "image" else "receipt video"
+        )
         return f"""
 You are an expert receipt analysis AI. Analyze this {media_instruction} and extract ALL information accurately.
 
@@ -198,11 +278,7 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
 """
 
     async def analyze_receipt_media(
-        self,
-        media_base64: str,
-        media_type: str,
-        user_id: str,
-        retry_count: int = 0
+        self, media_base64: str, media_type: str, user_id: str, retry_count: int = 0
     ) -> Dict[str, Any]:
         """
         Analyze receipt media (image or video) using Gemini 2.5 Flash with guaranteed JSON output
@@ -217,12 +293,15 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
             Structured receipt analysis data
         """
         try:
-            logger.info("Starting receipt analysis", extra={
-                "user_id": user_id,
-                "retry_count": retry_count,
-                "media_type": media_type,
-                "media_size_kb": len(media_base64) * 3 / 4 / 1024
-            })
+            logger.info(
+                "Starting receipt analysis",
+                extra={
+                    "user_id": user_id,
+                    "retry_count": retry_count,
+                    "media_type": media_type,
+                    "media_size_kb": len(media_base64) * 3 / 4 / 1024,
+                },
+            )
 
             # Validate and prepare media
             if media_type == "image":
@@ -236,16 +315,10 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
             prompt = self._create_optimized_prompt(media_type)
 
             # Prepare the content for Gemini
-            contents = [
-                prompt,
-                Part.from_data(data=media_data, mime_type=mime_type)
-            ]
+            contents = [prompt, Part.from_data(data=media_data, mime_type=mime_type)]
 
             # Generate content with schema enforcement
-            response = await asyncio.to_thread(
-                self.model.generate_content,
-                contents
-            )
+            response = await asyncio.to_thread(self.model.generate_content, contents)
 
             if not response.text:
                 raise ValueError("Empty response from Gemini")
@@ -254,67 +327,78 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
             analysis_result = json.loads(response.text)
 
             # Add processing metadata
-            analysis_result["processing_metadata"].update({
-                "timestamp": datetime.utcnow().isoformat(),
-                "model_version": self.model_name,
-                "items_count": len(analysis_result.get("items", [])),
-                "retry_count": retry_count
-            })
+            analysis_result["processing_metadata"].update(
+                {
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "model_version": self.model_name,
+                    "items_count": len(analysis_result.get("items", [])),
+                    "retry_count": retry_count,
+                }
+            )
 
             # Validate the result
             self._validate_analysis_result(analysis_result)
 
-            logger.info("Receipt analysis completed successfully", extra={
-                "user_id": user_id,
-                "items_extracted": len(analysis_result.get("items", [])),
-                "total_amount": analysis_result.get("totals", {}).get("total", 0),
-                "confidence": analysis_result.get("confidence", "unknown"),
-                "retry_count": retry_count
-            })
+            logger.info(
+                "Receipt analysis completed successfully",
+                extra={
+                    "user_id": user_id,
+                    "items_extracted": len(analysis_result.get("items", [])),
+                    "total_amount": analysis_result.get("totals", {}).get("total", 0),
+                    "confidence": analysis_result.get("confidence", "unknown"),
+                    "retry_count": retry_count,
+                },
+            )
 
             return {
                 "status": "success",
                 "data": analysis_result,
                 "processing_time": None,  # Will be calculated by caller
-                "model_version": self.model_name
+                "model_version": self.model_name,
             }
 
         except json.JSONDecodeError as e:
-            logger.error("JSON parsing failed", extra={
-                "user_id": user_id,
-                "retry_count": retry_count,
-                "error": str(e),
-                "raw_response": response.text if 'response' in locals() else None
-            })
+            logger.error(
+                "JSON parsing failed",
+                extra={
+                    "user_id": user_id,
+                    "retry_count": retry_count,
+                    "error": str(e),
+                    "raw_response": response.text if "response" in locals() else None,
+                },
+            )
 
             if retry_count < self.max_retries:
-                logger.info("Retrying with enhanced prompt", extra={
-                    "user_id": user_id,
-                    "retry_count": retry_count + 1
-                })
+                logger.info(
+                    "Retrying with enhanced prompt",
+                    extra={"user_id": user_id, "retry_count": retry_count + 1},
+                )
                 await asyncio.sleep(1)  # Brief delay before retry
-                return await self.analyze_receipt_media(media_base64, media_type, user_id, retry_count + 1)
+                return await self.analyze_receipt_media(
+                    media_base64, media_type, user_id, retry_count + 1
+                )
 
-            raise ValueError(f"Failed to get valid JSON after {self.max_retries} retries")
+            raise ValueError(
+                f"Failed to get valid JSON after {self.max_retries} retries"
+            )
 
         except Exception as e:
-            logger.error("Receipt analysis failed", extra={
-                "user_id": user_id,
-                "retry_count": retry_count,
-                "error": str(e)
-            })
+            logger.error(
+                "Receipt analysis failed",
+                extra={"user_id": user_id, "retry_count": retry_count, "error": str(e)},
+            )
 
             if retry_count < self.max_retries and "quota" not in str(e).lower():
-                logger.info("Retrying analysis", extra={
-                    "user_id": user_id,
-                    "retry_count": retry_count + 1
-                })
-                await asyncio.sleep(2 ** retry_count)  # Exponential backoff
-                return await self.analyze_receipt_media(media_base64, media_type, user_id, retry_count + 1)
+                logger.info(
+                    "Retrying analysis",
+                    extra={"user_id": user_id, "retry_count": retry_count + 1},
+                )
+                await asyncio.sleep(2**retry_count)  # Exponential backoff
+                return await self.analyze_receipt_media(
+                    media_base64, media_type, user_id, retry_count + 1
+                )
 
             raise
-
-
 
     def _prepare_image(self, image_base64: str) -> tuple[bytes, str]:
         """
@@ -336,15 +420,15 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
             # Resize if too large (Gemini has size limits)
             max_size = (2048, 2048)
             if image.size[0] > max_size[0] or image.size[1] > max_size[1]:
-                logger.info("Resizing large image", extra={
-                    "original_size": image.size,
-                    "max_size": max_size
-                })
+                logger.info(
+                    "Resizing large image",
+                    extra={"original_size": image.size, "max_size": max_size},
+                )
                 image.thumbnail(max_size, Image.Resampling.LANCZOS)
 
                 # Convert back to bytes
                 output_buffer = io.BytesIO()
-                image.save(output_buffer, format='JPEG', quality=90, optimize=True)
+                image.save(output_buffer, format="JPEG", quality=90, optimize=True)
                 image_bytes = output_buffer.getvalue()
 
             return image_bytes, "image/jpeg"
@@ -372,27 +456,29 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
             max_video_size = 100  # 100MB limit for videos
 
             if video_size_mb > max_video_size:
-                logger.warning("Video too large", extra={
-                    "size_mb": video_size_mb,
-                    "max_size_mb": max_video_size
-                })
-                raise ValueError(f"Video too large: {video_size_mb:.1f}MB. Maximum size: {max_video_size}MB")
+                logger.warning(
+                    "Video too large",
+                    extra={"size_mb": video_size_mb, "max_size_mb": max_video_size},
+                )
+                raise ValueError(
+                    f"Video too large: {video_size_mb:.1f}MB. Maximum size: {max_video_size}MB"
+                )
 
             # Determine video format from the first few bytes
-            if video_bytes.startswith(b'\x00\x00\x00'):
+            if video_bytes.startswith(b"\x00\x00\x00"):
                 mime_type = "video/mp4"
-            elif video_bytes.startswith(b'ftypqt'):
+            elif video_bytes.startswith(b"ftypqt"):
                 mime_type = "video/quicktime"
-            elif video_bytes.startswith(b'RIFF'):
+            elif video_bytes.startswith(b"RIFF"):
                 mime_type = "video/avi"
             else:
                 # Default to mp4 for unknown formats
                 mime_type = "video/mp4"
 
-            logger.info("Video prepared for analysis", extra={
-                "size_mb": video_size_mb,
-                "mime_type": mime_type
-            })
+            logger.info(
+                "Video prepared for analysis",
+                extra={"size_mb": video_size_mb, "mime_type": mime_type},
+            )
 
             return video_bytes, mime_type
 
@@ -430,11 +516,14 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
 
             # Allow small rounding differences
             if abs(calculated_total - declared_total) > 0.02:
-                logger.warning("Total mismatch detected", extra={
-                    "calculated_total": calculated_total,
-                    "declared_total": declared_total,
-                    "difference": abs(calculated_total - declared_total)
-                })
+                logger.warning(
+                    "Total mismatch detected",
+                    extra={
+                        "calculated_total": calculated_total,
+                        "declared_total": declared_total,
+                        "difference": abs(calculated_total - declared_total),
+                    },
+                )
 
             logger.debug("Analysis result validation passed")
 
@@ -460,7 +549,7 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                 "model": self.model_name,
                 "project_id": self.project_id,
                 "location": self.location,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
 
         except Exception as e:
@@ -468,12 +557,13 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
             return {
                 "status": "unhealthy",
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
 
 
 # Service instance
 _vertex_ai_service = None
+
 
 def get_vertex_ai_service() -> VertexAIReceiptService:
     """Get the singleton Vertex AI service instance"""

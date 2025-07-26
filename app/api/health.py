@@ -29,10 +29,13 @@ async def health_check(request: Request):
     - System information
     """
     try:
-        logger.info("Health check requested", extra={
-            "client_ip": request.client.host,
-            "user_agent": request.headers.get("user-agent", "unknown")
-        })
+        logger.info(
+            "Health check requested",
+            extra={
+                "client_ip": request.client.host,
+                "user_agent": request.headers.get("user-agent", "unknown"),
+            },
+        )
 
         # Check all services using app.state instances
         firestore_health = await request.app.state.firestore.health_check()
@@ -43,12 +46,14 @@ async def health_check(request: Request):
         service_statuses = {
             "firestore": firestore_health.get("status", "unknown"),
             "vertex_ai": vertex_ai_health.get("status", "unknown"),
-            "token_service": token_service_health.get("status", "unknown")
+            "token_service": token_service_health.get("status", "unknown"),
         }
 
-        overall_status = "healthy" if all(
-            status == "healthy" for status in service_statuses.values()
-        ) else "unhealthy"
+        overall_status = (
+            "healthy"
+            if all(status == "healthy" for status in service_statuses.values())
+            else "unhealthy"
+        )
 
         # Collect metrics
         metrics = {
@@ -58,7 +63,7 @@ async def health_check(request: Request):
             "debug_mode": settings.DEBUG,
             "firestore_latency_ms": firestore_health.get("latency_ms", 0),
             "vertex_ai_latency_ms": vertex_ai_health.get("latency_ms", 0),
-            "processing_stats": token_service_health.get("processing_stats", {})
+            "processing_stats": token_service_health.get("processing_stats", {}),
         }
 
         response = HealthCheckResponse(
@@ -66,13 +71,13 @@ async def health_check(request: Request):
             timestamp=datetime.utcnow(),
             version="1.0.0",
             services=service_statuses,
-            metrics=metrics
+            metrics=metrics,
         )
 
-        logger.info("Health check completed", extra={
-            "overall_status": overall_status,
-            "services": service_statuses
-        })
+        logger.info(
+            "Health check completed",
+            extra={"overall_status": overall_status, "services": service_statuses},
+        )
 
         return response
 
@@ -83,7 +88,7 @@ async def health_check(request: Request):
             status="unhealthy",
             timestamp=datetime.utcnow(),
             services={"system": "unhealthy"},
-            metrics={"error": str(e)}
+            metrics={"error": str(e)},
         )
 
 
@@ -105,7 +110,7 @@ async def detailed_health_check(request: Request):
             "services": {
                 "firestore": firestore_details,
                 "vertex_ai": vertex_ai_details,
-                "token_service": token_service_details
+                "token_service": token_service_details,
             },
             "system_info": {
                 "environment": settings.ENVIRONMENT,
@@ -114,9 +119,9 @@ async def detailed_health_check(request: Request):
                 "vertex_ai_location": settings.VERTEX_AI_LOCATION,
                 "emulator_mode": {
                     "firestore": settings.use_firestore_emulator,
-                    "vertex_ai": settings.use_vertex_ai_mock
-                }
-            }
+                    "vertex_ai": settings.use_vertex_ai_mock,
+                },
+            },
         }
 
     except Exception as e:
@@ -124,7 +129,7 @@ async def detailed_health_check(request: Request):
         return {
             "error": "Health check failed",
             "message": str(e),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
 
@@ -137,22 +142,23 @@ async def readiness_check(request: Request):
     """
     try:
         # Basic connectivity checks
-        firestore_ready = (await request.app.state.firestore.health_check()).get("status") == "healthy"
-        vertex_ai_ready = (await request.app.state.vertex_ai.health_check()).get("status") == "healthy"
+        firestore_ready = (await request.app.state.firestore.health_check()).get(
+            "status"
+        ) == "healthy"
+        vertex_ai_ready = (await request.app.state.vertex_ai.health_check()).get(
+            "status"
+        ) == "healthy"
 
         if firestore_ready and vertex_ai_ready:
-            return {
-                "status": "ready",
-                "timestamp": datetime.utcnow().isoformat()
-            }
+            return {"status": "ready", "timestamp": datetime.utcnow().isoformat()}
         else:
             return {
                 "status": "not_ready",
                 "timestamp": datetime.utcnow().isoformat(),
                 "services": {
                     "firestore": "ready" if firestore_ready else "not_ready",
-                    "vertex_ai": "ready" if vertex_ai_ready else "not_ready"
-                }
+                    "vertex_ai": "ready" if vertex_ai_ready else "not_ready",
+                },
             }
 
     except Exception as e:
@@ -160,7 +166,7 @@ async def readiness_check(request: Request):
         return {
             "status": "not_ready",
             "error": str(e),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
 
@@ -175,7 +181,7 @@ async def liveness_check():
         "status": "alive",
         "timestamp": datetime.utcnow().isoformat(),
         "service": "raseed-receipt-processor",
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
 
 
@@ -187,7 +193,9 @@ def _get_uptime_seconds() -> float:
         import os
 
         process = psutil.Process(os.getpid())
-        return (datetime.now() - datetime.fromtimestamp(process.create_time())).total_seconds()
+        return (
+            datetime.now() - datetime.fromtimestamp(process.create_time())
+        ).total_seconds()
     except Exception:
         return 0.0
 

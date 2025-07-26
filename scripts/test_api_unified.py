@@ -4,29 +4,28 @@ Unified API Test - Multipart File Upload
 Tests the enhanced API using multipart/form-data uploads (no more base64!)
 """
 
-import asyncio
 import json
 import time
 import requests
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
-import io
 
 # API Configuration
 API_BASE = "http://localhost:8080/api/v1"
 RECEIPTS_API = f"{API_BASE}/receipts"
 
+
 def create_test_image() -> str:
     """Create a synthetic test receipt image and save to file"""
     # Create a simple receipt image
-    img = Image.new('RGB', (400, 600), color='white')
+    img = Image.new("RGB", (400, 600), color="white")
     draw = ImageDraw.Draw(img)
 
     # Try to use a better font, fall back to default if not available
     try:
         font = ImageFont.truetype("arial.ttf", 20)
         small_font = ImageFont.truetype("arial.ttf", 16)
-    except:
+    except Exception:
         font = ImageFont.load_default()
         small_font = ImageFont.load_default()
 
@@ -39,8 +38,8 @@ def create_test_image() -> str:
         "Tel: (555) 123-4567",
         "",
         "Receipt #: TST-001",
-        f"Date: 2024-01-15",
-        f"Time: 14:30:25",
+        "Date: 2024-01-15",
+        "Time: 14:30:25",
         "",
         "ITEMS:",
         "Coffee           $4.50",
@@ -53,26 +52,27 @@ def create_test_image() -> str:
         "",
         "Payment: Cash",
         "",
-        "Thank you!"
+        "Thank you!",
     ]
 
     for line in lines:
         if line == "QUICK MART":
-            draw.text((50, y), line, fill='black', font=font)
+            draw.text((50, y), line, fill="black", font=font)
             y += 35
         elif line in ["ITEMS:", "TOTAL:"]:
-            draw.text((50, y), line, fill='black', font=font)
+            draw.text((50, y), line, fill="black", font=font)
             y += 30
         elif line == "":
             y += 15
         else:
-            draw.text((50, y), line, fill='black', font=small_font)
+            draw.text((50, y), line, fill="black", font=small_font)
             y += 25
 
     # Save to file and return path
     test_image_path = "test_receipt_synthetic.jpg"
-    img.save(test_image_path, format='JPEG', quality=90)
+    img.save(test_image_path, format="JPEG", quality=90)
     return test_image_path
+
 
 def test_image_analysis():
     """Test image analysis with multipart upload"""
@@ -89,22 +89,20 @@ def test_image_analysis():
         # Upload with multipart form-data
         print("2. Uploading with multipart form-data...")
 
-        with open(image_path, 'rb') as f:
-            files = {'file': ('test_receipt.jpg', f, 'image/jpeg')}
+        with open(image_path, "rb") as f:
+            files = {"file": ("test_receipt.jpg", f, "image/jpeg")}
             data = {
-                'user_id': 'unified_test_user',
-                'metadata': json.dumps({
-                    "source": "unified_test",
-                    "type": "synthetic_image",
-                    "test_id": "IMG_001"
-                })
+                "user_id": "unified_test_user",
+                "metadata": json.dumps(
+                    {
+                        "source": "unified_test",
+                        "type": "synthetic_image",
+                        "test_id": "IMG_001",
+                    }
+                ),
             }
 
-            response = requests.post(
-                f"{RECEIPTS_API}/upload",
-                files=files,
-                data=data
-            )
+            response = requests.post(f"{RECEIPTS_API}/upload", files=files, data=data)
 
         if response.status_code != 202:
             print(f"   ❌ Upload failed: {response.status_code}")
@@ -126,6 +124,7 @@ def test_image_analysis():
         print(f"❌ Image test failed: {e}")
         return False
 
+
 def test_video_analysis():
     """Test video analysis with multipart upload"""
     print("\n🎥 Testing Video Analysis (Multipart Upload)")
@@ -134,8 +133,8 @@ def test_video_analysis():
     try:
         # Look for existing video files
         video_files = []
-        for ext in ['.mp4', '.mov', '.avi']:
-            video_files.extend(list(Path('.').glob(f'*{ext}')))
+        for ext in [".mp4", ".mov", ".avi"]:
+            video_files.extend(list(Path(".").glob(f"*{ext}")))
 
         if not video_files:
             print("   ⚠️  No video files found in current directory")
@@ -157,24 +156,22 @@ def test_video_analysis():
         # Upload with multipart form-data
         print("2. Uploading with multipart form-data...")
 
-        with open(video_path, 'rb') as f:
-            files = {'file': (video_path.name, f, 'video/mp4')}
+        with open(video_path, "rb") as f:
+            files = {"file": (video_path.name, f, "video/mp4")}
             data = {
-                'user_id': 'unified_test_user',
-                'metadata': json.dumps({
-                    "source": "unified_test",
-                    "type": "real_video",
-                    "filename": video_path.name,
-                    "size_mb": video_size_mb,
-                    "test_id": "VID_001"
-                })
+                "user_id": "unified_test_user",
+                "metadata": json.dumps(
+                    {
+                        "source": "unified_test",
+                        "type": "real_video",
+                        "filename": video_path.name,
+                        "size_mb": video_size_mb,
+                        "test_id": "VID_001",
+                    }
+                ),
             }
 
-            response = requests.post(
-                f"{RECEIPTS_API}/upload",
-                files=files,
-                data=data
-            )
+            response = requests.post(f"{RECEIPTS_API}/upload", files=files, data=data)
 
         if response.status_code != 202:
             print(f"   ❌ Upload failed: {response.status_code}")
@@ -193,6 +190,7 @@ def test_video_analysis():
     except Exception as e:
         print(f"❌ Video test failed: {e}")
         return False
+
 
 def poll_for_results(token: str, media_type: str) -> bool:
     """Poll for processing results"""
@@ -214,13 +212,15 @@ def poll_for_results(token: str, media_type: str) -> bool:
             status = data["status"]
             progress = data["progress"]
 
-            print(f"   Status: {status} - {progress['stage']} ({progress['percentage']:.1f}%)")
+            print(
+                f"   Status: {status} - {progress['stage']} ({progress['percentage']:.1f}%)"
+            )
 
             if status == "completed":
                 print(f"\n🎉 {media_type.title()} Analysis Completed!")
 
                 result = data["result"]
-                print(f"\n📊 Analysis Results:")
+                print("\n📊 Analysis Results:")
                 print(f"🏪 Store: {result['place']}")
                 print(f"💰 Total: ${result['amount']:.2f}")
                 print(f"📂 Category: {result['category']}")
@@ -246,6 +246,7 @@ def poll_for_results(token: str, media_type: str) -> bool:
     print(f"\n⏰ {media_type.title()} processing timed out")
     return False
 
+
 def test_api_validation():
     """Test API validation for required fields"""
     print("\n🔍 Testing API Validation")
@@ -256,20 +257,20 @@ def test_api_validation():
             "name": "Missing file",
             "files": {},
             "data": {"user_id": "test_user"},
-            "expected_error": "field required"
+            "expected_error": "field required",
         },
         {
             "name": "Missing user_id",
             "files": {"file": ("test.txt", b"test content", "text/plain")},
             "data": {},
-            "expected_error": "field required"
+            "expected_error": "field required",
         },
         {
             "name": "Unsupported file type",
             "files": {"file": ("test.txt", b"test content", "text/plain")},
             "data": {"user_id": "test_user"},
-            "expected_error": "Unsupported file type"
-        }
+            "expected_error": "Unsupported file type",
+        },
     ]
 
     for i, test_case in enumerate(test_cases, 1):
@@ -279,7 +280,7 @@ def test_api_validation():
             response = requests.post(
                 f"{RECEIPTS_API}/upload",
                 files=test_case["files"],
-                data=test_case["data"]
+                data=test_case["data"],
             )
 
             if response.status_code in [400, 422]:  # Validation error
@@ -291,10 +292,13 @@ def test_api_validation():
                 else:
                     print(f"   ⚠️  Unexpected error: {error_msg}")
             else:
-                print(f"   ❌ Expected validation error but got: {response.status_code}")
+                print(
+                    f"   ❌ Expected validation error but got: {response.status_code}"
+                )
 
         except Exception as e:
             print(f"   ❌ Test failed: {e}")
+
 
 def main():
     """Main test function"""
@@ -321,7 +325,10 @@ def main():
     print("🔍 API Validation: ✅ TESTED")
 
     print("\n🎉 Unified API Testing Complete!")
-    print("Your system now uses efficient multipart uploads instead of base64 encoding!")
+    print(
+        "Your system now uses efficient multipart uploads instead of base64 encoding!"
+    )
+
 
 if __name__ == "__main__":
     main()

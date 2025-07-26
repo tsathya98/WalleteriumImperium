@@ -4,7 +4,7 @@ Project Raseed - AI-Powered Receipt Management Backend
 Main FastAPI application entry point for Google Cloud Run deployment
 """
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -27,6 +27,7 @@ settings = get_settings()
 setup_logging(settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
+
 # Initialize services on startup
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,8 +47,7 @@ async def lifespan(app: FastAPI):
 
         # Initialize token service with proper dependencies
         token_service_instance = TokenService(
-            firestore_service=firestore_service,
-            vertex_ai_service=vertex_ai_service
+            firestore_service=firestore_service, vertex_ai_service=vertex_ai_service
         )
         await token_service_instance.initialize()
         app.state.token_service = token_service_instance
@@ -65,6 +65,7 @@ async def lifespan(app: FastAPI):
     # Cleanup on shutdown
     logger.info("🛑 Shutting down Raseed Receipt Processor")
 
+
 # Create FastAPI application
 app = FastAPI(
     title="Project Raseed - Receipt Processor API",
@@ -72,7 +73,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # CORS middleware for Flutter frontend
@@ -83,6 +84,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+
 
 # Request logging middleware
 @app.middleware("http")
@@ -108,6 +110,7 @@ async def log_requests(request: Request, call_next):
 
     return response
 
+
 # Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -120,22 +123,18 @@ async def global_exception_handler(request: Request, exc: Exception):
             "error": "Internal server error",
             "message": "An unexpected error occurred while processing your request",
             "timestamp": datetime.utcnow().isoformat(),
-            "request_id": getattr(request.state, "request_id", "unknown")
-        }
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
     )
 
+
 # Include API routers
-app.include_router(
-    health.router,
-    prefix="/api/v1",
-    tags=["Health"]
-)
+app.include_router(health.router, prefix="/api/v1", tags=["Health"])
 
 app.include_router(
-    receipts.router,
-    prefix="/api/v1/receipts",
-    tags=["Receipt Processing"]
+    receipts.router, prefix="/api/v1/receipts", tags=["Receipt Processing"]
 )
+
 
 # Root endpoint
 @app.get("/")
@@ -147,8 +146,9 @@ async def root():
         "status": "running",
         "timestamp": datetime.utcnow().isoformat(),
         "docs_url": "/docs" if settings.DEBUG else None,
-        "environment": settings.ENVIRONMENT
+        "environment": settings.ENVIRONMENT,
     }
+
 
 if __name__ == "__main__":
     import uvicorn
@@ -160,5 +160,5 @@ if __name__ == "__main__":
         port=int(settings.PORT),
         reload=settings.DEBUG,
         log_level=settings.LOG_LEVEL.lower(),
-        access_log=True
+        access_log=True,
     )

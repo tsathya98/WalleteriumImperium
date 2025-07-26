@@ -22,7 +22,7 @@ class StructuredFormatter(logging.Formatter):
             "logger": record.name,
             "module": record.module,
             "function": record.funcName,
-            "line": record.lineno
+            "line": record.lineno,
         }
 
         # Add exception info if present
@@ -141,12 +141,14 @@ def get_logger(name: str, **extra_fields) -> LoggerAdapter:
 # Performance monitoring decorator
 def log_performance(logger: LoggerAdapter):
     """Decorator to log function performance"""
+
     def decorator(func):
         import functools
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             import time
+
             start_time = time.time()
 
             try:
@@ -158,8 +160,8 @@ def log_performance(logger: LoggerAdapter):
                     extra={
                         "function": func.__name__,
                         "duration_seconds": round(duration, 3),
-                        "status": "success"
-                    }
+                        "status": "success",
+                    },
                 )
 
                 return result
@@ -173,26 +175,28 @@ def log_performance(logger: LoggerAdapter):
                         "function": func.__name__,
                         "duration_seconds": round(duration, 3),
                         "status": "error",
-                        "error": str(e)
-                    }
+                        "error": str(e),
+                    },
                 )
 
                 raise
 
         return wrapper
+
     return decorator
 
 
 # Async performance monitoring decorator
 def log_async_performance(logger: LoggerAdapter):
     """Decorator to log async function performance"""
+
     def decorator(func):
-        import asyncio
         import functools
 
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             import time
+
             start_time = time.time()
 
             try:
@@ -204,8 +208,8 @@ def log_async_performance(logger: LoggerAdapter):
                     extra={
                         "function": func.__name__,
                         "duration_seconds": round(duration, 3),
-                        "status": "success"
-                    }
+                        "status": "success",
+                    },
                 )
 
                 return result
@@ -219,11 +223,12 @@ def log_async_performance(logger: LoggerAdapter):
                         "function": func.__name__,
                         "duration_seconds": round(duration, 3),
                         "status": "error",
-                        "error": str(e)
-                    }
+                        "error": str(e),
+                    },
                 )
 
                 raise
 
         return wrapper
+
     return decorator

@@ -4,7 +4,7 @@ Provides comprehensive performance monitoring and health tracking
 """
 
 from typing import Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 import asyncio
 import time
 from collections import defaultdict, deque
@@ -31,7 +31,9 @@ class MetricsCollector:
         self.counters[key] += 1
         logger.debug(f"Counter incremented: {key}")
 
-    def record_histogram(self, name: str, value: float, labels: Optional[Dict[str, str]] = None):
+    def record_histogram(
+        self, name: str, value: float, labels: Optional[Dict[str, str]] = None
+    ):
         """Record a histogram value"""
         key = self._build_metric_key(name, labels)
         self.histograms[key].append(value)
@@ -42,7 +44,9 @@ class MetricsCollector:
 
         logger.debug(f"Histogram recorded: {key} = {value}")
 
-    def set_gauge(self, name: str, value: float, labels: Optional[Dict[str, str]] = None):
+    def set_gauge(
+        self, name: str, value: float, labels: Optional[Dict[str, str]] = None
+    ):
         """Set a gauge value"""
         key = self._build_metric_key(name, labels)
         self.gauges[key] = value
@@ -50,36 +54,38 @@ class MetricsCollector:
 
     def record_request(self, method: str, path: str, status_code: int, duration: float):
         """Record request metrics"""
-        self.request_times.append({
-            'timestamp': time.time(),
-            'method': method,
-            'path': path,
-            'status_code': status_code,
-            'duration': duration
-        })
+        self.request_times.append(
+            {
+                "timestamp": time.time(),
+                "method": method,
+                "path": path,
+                "status_code": status_code,
+                "duration": duration,
+            }
+        )
 
         # Update metrics
-        self.increment_counter("http_requests_total", {
-            "method": method,
-            "status": str(status_code)
-        })
+        self.increment_counter(
+            "http_requests_total", {"method": method, "status": str(status_code)}
+        )
 
-        self.record_histogram("http_request_duration_seconds", duration, {
-            "method": method,
-            "path": path
-        })
+        self.record_histogram(
+            "http_request_duration_seconds", duration, {"method": method, "path": path}
+        )
 
-    def record_processing_event(self, event: str, user_id: str, duration: Optional[float] = None):
+    def record_processing_event(
+        self, event: str, user_id: str, duration: Optional[float] = None
+    ):
         """Record receipt processing events"""
-        self.increment_counter("receipt_processing_events_total", {
-            "event": event,
-            "user_type": self._classify_user(user_id)
-        })
+        self.increment_counter(
+            "receipt_processing_events_total",
+            {"event": event, "user_type": self._classify_user(user_id)},
+        )
 
         if duration is not None:
-            self.record_histogram("receipt_processing_duration_seconds", duration, {
-                "stage": event
-            })
+            self.record_histogram(
+                "receipt_processing_duration_seconds", duration, {"stage": event}
+            )
 
     def get_metrics_summary(self) -> Dict[str, Any]:
         """Get summary of all metrics"""
@@ -94,18 +100,20 @@ class MetricsCollector:
                         "min": min(values) if values else 0,
                         "max": max(values) if values else 0,
                         "p95": self._percentile(values, 0.95) if values else 0,
-                        "p99": self._percentile(values, 0.99) if values else 0
+                        "p99": self._percentile(values, 0.99) if values else 0,
                     }
                     for key, values in self.histograms.items()
                 },
                 "uptime_seconds": time.time() - self._start_time,
-                "recent_requests": self._get_request_stats()
+                "recent_requests": self._get_request_stats(),
             }
         except Exception as e:
             logger.error(f"Error getting metrics summary: {e}")
             return {}
 
-    def _build_metric_key(self, name: str, labels: Optional[Dict[str, str]] = None) -> str:
+    def _build_metric_key(
+        self, name: str, labels: Optional[Dict[str, str]] = None
+    ) -> str:
         """Build metric key with labels"""
         if not labels:
             return name
@@ -145,15 +153,21 @@ class MetricsCollector:
             return {}
 
         # Calculate success rate (2xx status codes)
-        successful = sum(1 for req in recent_requests if 200 <= req['status_code'] < 300)
+        successful = sum(
+            1 for req in recent_requests if 200 <= req["status_code"] < 300
+        )
         success_rate = (successful / total_requests) * 100
 
         # Calculate average response time
-        avg_response_time = sum(req['duration'] for req in recent_requests) / total_requests
+        avg_response_time = (
+            sum(req["duration"] for req in recent_requests) / total_requests
+        )
 
         # Calculate requests per minute (last 5 minutes)
         five_min_ago = time.time() - 300
-        recent_count = sum(1 for req in recent_requests if req['timestamp'] > five_min_ago)
+        recent_count = sum(
+            1 for req in recent_requests if req["timestamp"] > five_min_ago
+        )
         rpm = recent_count / 5
 
         return {
@@ -161,7 +175,7 @@ class MetricsCollector:
             "success_rate_percent": round(success_rate, 2),
             "avg_response_time_ms": round(avg_response_time * 1000, 2),
             "requests_per_minute": round(rpm, 2),
-            "status_distribution": self._get_status_distribution(recent_requests)
+            "status_distribution": self._get_status_distribution(recent_requests),
         }
 
     def _get_status_distribution(self, requests: list) -> Dict[str, int]:
@@ -196,27 +210,38 @@ class HealthChecker:
                 firestore_service.health_check(),
                 vertex_ai_service.health_check(),
                 token_service.health_check(),
-                return_exceptions=True
+                return_exceptions=True,
             )
 
             firestore_health, vertex_ai_health, token_service_health = health_checks
 
             # Handle exceptions
             if isinstance(firestore_health, Exception):
-                firestore_health = {"status": "unhealthy", "error": str(firestore_health)}
+                firestore_health = {
+                    "status": "unhealthy",
+                    "error": str(firestore_health),
+                }
             if isinstance(vertex_ai_health, Exception):
-                vertex_ai_health = {"status": "unhealthy", "error": str(vertex_ai_health)}
+                vertex_ai_health = {
+                    "status": "unhealthy",
+                    "error": str(vertex_ai_health),
+                }
             if isinstance(token_service_health, Exception):
-                token_service_health = {"status": "unhealthy", "error": str(token_service_health)}
+                token_service_health = {
+                    "status": "unhealthy",
+                    "error": str(token_service_health),
+                }
 
             # Determine overall health
             service_statuses = {
                 "firestore": firestore_health.get("status", "unknown"),
                 "vertex_ai": vertex_ai_health.get("status", "unknown"),
-                "token_service": token_service_health.get("status", "unknown")
+                "token_service": token_service_health.get("status", "unknown"),
             }
 
-            overall_healthy = all(status == "healthy" for status in service_statuses.values())
+            overall_healthy = all(
+                status == "healthy" for status in service_statuses.values()
+            )
             overall_status = "healthy" if overall_healthy else "unhealthy"
 
             # Calculate check duration
@@ -230,13 +255,13 @@ class HealthChecker:
                 "services": {
                     "firestore": firestore_health,
                     "vertex_ai": vertex_ai_health,
-                    "token_service": token_service_health
+                    "token_service": token_service_health,
                 },
                 "system": {
                     "uptime_seconds": self._get_uptime(),
                     "memory_usage_mb": self._get_memory_usage(),
-                    "cpu_usage_percent": self._get_cpu_usage()
-                }
+                    "cpu_usage_percent": self._get_cpu_usage(),
+                },
             }
 
             # Update health history
@@ -255,15 +280,12 @@ class HealthChecker:
                 "status": "unhealthy",
                 "timestamp": datetime.utcnow().isoformat(),
                 "error": str(e),
-                "check_duration_ms": round((time.time() - check_start) * 1000, 2)
+                "check_duration_ms": round((time.time() - check_start) * 1000, 2),
             }
 
     def _update_health_history(self, is_healthy: bool):
         """Update health check history"""
-        self.health_history.append({
-            "timestamp": time.time(),
-            "healthy": is_healthy
-        })
+        self.health_history.append({"timestamp": time.time(), "healthy": is_healthy})
 
         self.last_check_time = time.time()
 
@@ -285,7 +307,7 @@ class HealthChecker:
             "success_rate_percent": round((healthy_checks / total_checks) * 100, 2),
             "consecutive_failures": self.consecutive_failures,
             "last_failure": self._get_last_failure_time(),
-            "total_checks": len(self.health_history)
+            "total_checks": len(self.health_history),
         }
 
     def _get_last_failure_time(self) -> Optional[str]:
@@ -300,6 +322,7 @@ class HealthChecker:
         try:
             import psutil
             import os
+
             process = psutil.Process(os.getpid())
             return time.time() - process.create_time()
         except Exception:
@@ -310,6 +333,7 @@ class HealthChecker:
         try:
             import psutil
             import os
+
             process = psutil.Process(os.getpid())
             return process.memory_info().rss / 1024 / 1024
         except Exception:
@@ -320,6 +344,7 @@ class HealthChecker:
         try:
             import psutil
             import os
+
             process = psutil.Process(os.getpid())
             return process.cpu_percent()
         except Exception:
@@ -336,15 +361,15 @@ class PerformanceTracker:
 
     def track_operation(self, operation: str, duration: float, success: bool = True):
         """Track operation performance"""
-        self.operation_timings[operation].append({
-            'duration': duration,
-            'timestamp': time.time(),
-            'success': success
-        })
+        self.operation_timings[operation].append(
+            {"duration": duration, "timestamp": time.time(), "success": success}
+        )
 
         # Keep only recent data (last 1000 operations per type)
         if len(self.operation_timings[operation]) > 1000:
-            self.operation_timings[operation] = self.operation_timings[operation][-1000:]
+            self.operation_timings[operation] = self.operation_timings[operation][
+                -1000:
+            ]
 
         # Update counters
         if success:
@@ -360,19 +385,23 @@ class PerformanceTracker:
             if not timings:
                 continue
 
-            durations = [t['duration'] for t in timings]
-            success_rate = self.success_counts[operation] / (
-                self.success_counts[operation] + self.error_counts[operation]
-            ) * 100 if (self.success_counts[operation] + self.error_counts[operation]) > 0 else 0
+            durations = [t["duration"] for t in timings]
+            success_rate = (
+                self.success_counts[operation]
+                / (self.success_counts[operation] + self.error_counts[operation])
+                * 100
+                if (self.success_counts[operation] + self.error_counts[operation]) > 0
+                else 0
+            )
 
             summary[operation] = {
-                'total_operations': len(timings),
-                'success_rate_percent': round(success_rate, 2),
-                'avg_duration_ms': round(sum(durations) / len(durations) * 1000, 2),
-                'min_duration_ms': round(min(durations) * 1000, 2),
-                'max_duration_ms': round(max(durations) * 1000, 2),
-                'p95_duration_ms': round(self._percentile(durations, 0.95) * 1000, 2),
-                'errors': self.error_counts[operation]
+                "total_operations": len(timings),
+                "success_rate_percent": round(success_rate, 2),
+                "avg_duration_ms": round(sum(durations) / len(durations) * 1000, 2),
+                "min_duration_ms": round(min(durations) * 1000, 2),
+                "max_duration_ms": round(max(durations) * 1000, 2),
+                "p95_duration_ms": round(self._percentile(durations, 0.95) * 1000, 2),
+                "errors": self.error_counts[operation],
             }
 
         return summary

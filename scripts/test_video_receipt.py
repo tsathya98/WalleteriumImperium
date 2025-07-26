@@ -4,7 +4,6 @@ Test script for Video Receipt Analysis
 Tests video processing capabilities with Gemini 2.5 Flash using multipart uploads
 """
 
-import asyncio
 import json
 import time
 import requests
@@ -14,6 +13,7 @@ from pathlib import Path
 API_BASE = "http://localhost:8080/api/v1"
 RECEIPTS_API = f"{API_BASE}/receipts"
 
+
 def get_video_info(video_path: str) -> tuple[float, str]:
     """Get video file size and MIME type"""
     try:
@@ -21,22 +21,23 @@ def get_video_info(video_path: str) -> tuple[float, str]:
         file_extension = Path(video_path).suffix.lower()
 
         # Determine MIME type
-        if file_extension == '.mp4':
-            mime_type = 'video/mp4'
-        elif file_extension == '.mov':
-            mime_type = 'video/quicktime'
-        elif file_extension == '.avi':
-            mime_type = 'video/avi'
-        elif file_extension == '.mkv':
-            mime_type = 'video/x-matroska'
-        elif file_extension == '.webm':
-            mime_type = 'video/webm'
+        if file_extension == ".mp4":
+            mime_type = "video/mp4"
+        elif file_extension == ".mov":
+            mime_type = "video/quicktime"
+        elif file_extension == ".avi":
+            mime_type = "video/avi"
+        elif file_extension == ".mkv":
+            mime_type = "video/x-matroska"
+        elif file_extension == ".webm":
+            mime_type = "video/webm"
         else:
-            mime_type = 'video/mp4'  # Default fallback
+            mime_type = "video/mp4"  # Default fallback
 
         return file_size_mb, mime_type
     except Exception as e:
         raise ValueError(f"Failed to get video info for {video_path}: {str(e)}")
+
 
 def analyze_video_receipt(video_path: str, user_id: str = "video_test_user"):
     """Analyze a video receipt"""
@@ -61,22 +62,22 @@ def analyze_video_receipt(video_path: str, user_id: str = "video_test_user"):
         # Upload video receipt with multipart form-data
         print("2. Uploading video receipt with multipart form-data...")
 
-        with open(video_path, 'rb') as f:
-            files = {'file': (Path(video_path).name, f, mime_type)}
+        with open(video_path, "rb") as f:
+            files = {"file": (Path(video_path).name, f, mime_type)}
             data = {
-                'user_id': user_id,
-                'metadata': json.dumps({
-                    "source": "video_test",
-                    "filename": Path(video_path).name,
-                    "size_mb": video_size_mb,
-                    "media_type": "video"
-                })
+                "user_id": user_id,
+                "metadata": json.dumps(
+                    {
+                        "source": "video_test",
+                        "filename": Path(video_path).name,
+                        "size_mb": video_size_mb,
+                        "media_type": "video",
+                    }
+                ),
             }
 
             upload_response = requests.post(
-                f"{RECEIPTS_API}/upload",
-                files=files,
-                data=data
+                f"{RECEIPTS_API}/upload", files=files, data=data
             )
 
         if upload_response.status_code != 202:
@@ -109,7 +110,9 @@ def analyze_video_receipt(video_path: str, user_id: str = "video_test_user"):
             status = status_data["status"]
             progress = status_data["progress"]
 
-            print(f"   Status: {status} - {progress['stage']} ({progress['percentage']:.1f}%)")
+            print(
+                f"   Status: {status} - {progress['stage']} ({progress['percentage']:.1f}%)"
+            )
             print(f"   Message: {progress['message']}")
 
             if status == "completed":
@@ -117,7 +120,7 @@ def analyze_video_receipt(video_path: str, user_id: str = "video_test_user"):
 
                 # Display detailed results
                 result = status_data["result"]
-                print(f"\n📊 Video Receipt Analysis Results:")
+                print("\n📊 Video Receipt Analysis Results:")
                 print(f"🏪 Store: {result['place']}")
                 print(f"💰 Total Amount: ${result['amount']:.2f}")
                 print(f"📂 Category: {result['category']}")
@@ -129,14 +132,14 @@ def analyze_video_receipt(video_path: str, user_id: str = "video_test_user"):
                 print(f"🛡️ Warranty: {result.get('warranty', False)}")
 
                 # Performance metrics
-                print(f"\n📈 Performance Metrics:")
+                print("\n📈 Performance Metrics:")
                 print(f"   Video Size: {video_size_mb:.2f} MB")
                 print(f"   Processing Time: {attempt * 3}s")
                 print(f"   Attempts: {attempt}")
 
                 # Save detailed result
                 output_file = f"video_receipt_result_{Path(video_path).stem}.json"
-                with open(output_file, 'w') as f:
+                with open(output_file, "w") as f:
                     json.dump(status_data, f, indent=2, default=str)
                 print(f"\n💾 Full analysis saved to: {output_file}")
 
@@ -159,7 +162,9 @@ def analyze_video_receipt(video_path: str, user_id: str = "video_test_user"):
     except Exception as e:
         print(f"❌ Video analysis failed: {str(e)}")
         import traceback
+
         traceback.print_exc()
+
 
 def create_test_video():
     """Create a simple test video (requires OpenCV)"""
@@ -170,8 +175,8 @@ def create_test_video():
         import numpy as np
 
         # Create a simple video with receipt-like content
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        video = cv2.VideoWriter('test_receipt_video.mp4', fourcc, 1.0, (640, 480))
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        video = cv2.VideoWriter("test_receipt_video.mp4", fourcc, 1.0, (640, 480))
 
         # Create frames with receipt content
         for frame_num in range(10):  # 10 second video at 1 FPS
@@ -188,20 +193,34 @@ def create_test_video():
                 "Sandwich        $8.99",
                 "Tax             $1.08",
                 "",
-                f"Total          $14.57",
+                "Total          $14.57",
                 "",
-                "Thank you!"
+                "Thank you!",
             ]
 
             y_offset = 50
             for line in receipt_lines:
-                cv2.putText(frame, line, (50, y_offset),
-                          cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+                cv2.putText(
+                    frame,
+                    line,
+                    (50, y_offset),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (0, 0, 0),
+                    2,
+                )
                 y_offset += 35
 
             # Add frame number
-            cv2.putText(frame, f"Frame {frame_num + 1}", (500, 450),
-                      cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 100, 100), 1)
+            cv2.putText(
+                frame,
+                f"Frame {frame_num + 1}",
+                (500, 450),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (100, 100, 100),
+                1,
+            )
 
             video.write(frame)
 
@@ -217,6 +236,7 @@ def create_test_video():
         print(f"   ❌ Failed to create test video: {e}")
         return None
 
+
 def compare_video_vs_image_analysis():
     """Compare video analysis vs image analysis performance"""
     print("🔬 Video vs Image Analysis Comparison")
@@ -229,25 +249,26 @@ def compare_video_vs_image_analysis():
     print("3. Analyze both and compare accuracy/performance")
     print("4. Expected: Video may be more accurate but slower")
 
+
 def main():
     """Main test function"""
     print("🎥 Video Receipt Analysis Test")
     print("=" * 60)
 
     # Check for video files in common locations
-    video_extensions = ['.mp4', '.mov', '.avi', '.mkv']
+    video_extensions = [".mp4", ".mov", ".avi", ".mkv"]
     test_videos = []
 
     # Look for videos in current directory
     for ext in video_extensions:
-        videos = list(Path('.').glob(f'*{ext}'))
+        videos = list(Path(".").glob(f"*{ext}"))
         test_videos.extend(videos)
 
     # Look for videos in docs/video_samples
-    video_samples_dir = Path('../docs/video_samples')
+    video_samples_dir = Path("../docs/video_samples")
     if video_samples_dir.exists():
         for ext in video_extensions:
-            videos = list(video_samples_dir.glob(f'*{ext}'))
+            videos = list(video_samples_dir.glob(f"*{ext}"))
             test_videos.extend(videos)
 
     if test_videos:
@@ -269,6 +290,7 @@ def main():
         if test_video:
             print(f"\nTesting created video: {test_video}")
             analyze_video_receipt(test_video)
+
 
 if __name__ == "__main__":
     import sys

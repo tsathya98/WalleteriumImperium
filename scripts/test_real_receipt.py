@@ -4,7 +4,6 @@ Test script for real receipt media (images and videos)
 Upload and analyze actual receipt photos or videos
 """
 
-import base64
 import json
 import time
 import requests
@@ -14,6 +13,7 @@ from pathlib import Path
 API_BASE = "http://localhost:8080/api/v1"
 RECEIPTS_API = f"{API_BASE}/receipts"
 
+
 def get_file_info(file_path: str) -> tuple[float, str]:
     """Get file size and appropriate MIME type"""
     try:
@@ -21,24 +21,25 @@ def get_file_info(file_path: str) -> tuple[float, str]:
         file_extension = Path(file_path).suffix.lower()
 
         # Determine MIME type
-        if file_extension in ['.jpg', '.jpeg']:
-            mime_type = 'image/jpeg'
-        elif file_extension == '.png':
-            mime_type = 'image/png'
-        elif file_extension == '.gif':
-            mime_type = 'image/gif'
-        elif file_extension in ['.mp4']:
-            mime_type = 'video/mp4'
-        elif file_extension in ['.mov']:
-            mime_type = 'video/quicktime'
-        elif file_extension in ['.avi']:
-            mime_type = 'video/avi'
+        if file_extension in [".jpg", ".jpeg"]:
+            mime_type = "image/jpeg"
+        elif file_extension == ".png":
+            mime_type = "image/png"
+        elif file_extension == ".gif":
+            mime_type = "image/gif"
+        elif file_extension in [".mp4"]:
+            mime_type = "video/mp4"
+        elif file_extension in [".mov"]:
+            mime_type = "video/quicktime"
+        elif file_extension in [".avi"]:
+            mime_type = "video/avi"
         else:
-            mime_type = 'application/octet-stream'
+            mime_type = "application/octet-stream"
 
         return file_size_mb, mime_type
     except Exception as e:
         raise ValueError(f"Failed to get file info for {file_path}: {str(e)}")
+
 
 def analyze_real_receipt(media_path: str, user_id: str = "real_test_user"):
     """Analyze a real receipt image or video"""
@@ -47,10 +48,10 @@ def analyze_real_receipt(media_path: str, user_id: str = "real_test_user"):
     media_path_obj = Path(media_path)
     extension = media_path_obj.suffix.lower()
 
-    if extension in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
+    if extension in [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"]:
         media_type = "image"
         icon = "📸"
-    elif extension in ['.mp4', '.mov', '.avi', '.mkv', '.webm']:
+    elif extension in [".mp4", ".mov", ".avi", ".mkv", ".webm"]:
         media_type = "video"
         icon = "🎥"
     else:
@@ -74,27 +75,29 @@ def analyze_real_receipt(media_path: str, user_id: str = "real_test_user"):
 
         size_limit = 10 if media_type == "image" else 100
         if file_size_mb > size_limit:
-            print(f"   ⚠️  Warning: {media_type.title()} is large ({file_size_mb:.2f} MB)")
+            print(
+                f"   ⚠️  Warning: {media_type.title()} is large ({file_size_mb:.2f} MB)"
+            )
 
         # Upload receipt with multipart form-data
         print(f"2. Uploading receipt {media_type} with multipart form-data...")
 
-        with open(media_path, 'rb') as f:
-            files = {'file': (Path(media_path).name, f, mime_type)}
+        with open(media_path, "rb") as f:
+            files = {"file": (Path(media_path).name, f, mime_type)}
             data = {
-                'user_id': user_id,
-                'metadata': json.dumps({
-                    "source": f"real_{media_type}_test",
-                    "filename": Path(media_path).name,
-                    "size_mb": file_size_mb,
-                    "media_type": media_type
-                })
+                "user_id": user_id,
+                "metadata": json.dumps(
+                    {
+                        "source": f"real_{media_type}_test",
+                        "filename": Path(media_path).name,
+                        "size_mb": file_size_mb,
+                        "media_type": media_type,
+                    }
+                ),
             }
 
             upload_response = requests.post(
-                f"{RECEIPTS_API}/upload",
-                files=files,
-                data=data
+                f"{RECEIPTS_API}/upload", files=files, data=data
             )
 
         if upload_response.status_code != 202:
@@ -127,14 +130,16 @@ def analyze_real_receipt(media_path: str, user_id: str = "real_test_user"):
             status = status_data["status"]
             progress = status_data["progress"]
 
-            print(f"   Status: {status} - {progress['stage']} ({progress['percentage']:.1f}%)")
+            print(
+                f"   Status: {status} - {progress['stage']} ({progress['percentage']:.1f}%)"
+            )
 
             if status == "completed":
                 print("\n🎉 Analysis Completed!")
 
                 # Display detailed results
                 result = status_data["result"]
-                print(f"\n📊 Receipt Analysis Results:")
+                print("\n📊 Receipt Analysis Results:")
                 print(f"🏪 Store: {result['place']}")
                 print(f"💰 Total Amount: ${result['amount']:.2f}")
                 print(f"📂 Category: {result['category']}")
@@ -147,7 +152,7 @@ def analyze_real_receipt(media_path: str, user_id: str = "real_test_user"):
 
                 # Save detailed result
                 output_file = f"real_receipt_result_{Path(media_path).stem}.json"
-                with open(output_file, 'w') as f:
+                with open(output_file, "w") as f:
                     json.dump(status_data, f, indent=2, default=str)
                 print(f"\n💾 Full analysis saved to: {output_file}")
 
@@ -169,7 +174,9 @@ def analyze_real_receipt(media_path: str, user_id: str = "real_test_user"):
     except Exception as e:
         print(f"❌ Analysis failed: {str(e)}")
         import traceback
+
         traceback.print_exc()
+
 
 def main():
     """Main test function"""
@@ -183,7 +190,7 @@ def main():
         "receipt.jpeg",
         "test_receipt.jpg",
         "receipt_video.mp4",
-        "receipt.mov"
+        "receipt.mov",
     ]
 
     print("Looking for receipt images and videos in current directory...")
@@ -194,7 +201,7 @@ def main():
         if Path(media).exists():
             available_media.append(media)
             ext = Path(media).suffix.lower()
-            media_type = "📸 Image" if ext in ['.jpg', '.jpeg', '.png'] else "🎥 Video"
+            media_type = "📸 Image" if ext in [".jpg", ".jpeg", ".png"] else "🎥 Video"
             print(f"✅ Found {media_type}: {media}")
 
     if not available_media:
@@ -211,7 +218,8 @@ def main():
     # Analyze each available media
     for media_path in available_media:
         analyze_real_receipt(media_path)
-        print("\n" + "="*60 + "\n")
+        print("\n" + "=" * 60 + "\n")
+
 
 if __name__ == "__main__":
     import sys

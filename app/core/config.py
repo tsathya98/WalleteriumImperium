@@ -7,17 +7,12 @@ from pydantic import Field, field_validator, ConfigDict
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 import os
-from pathlib import Path
 
 
 class Settings(BaseSettings):
     """Application settings with environment-specific overrides"""
 
-    model_config = ConfigDict(
-        env_file=".env",
-        case_sensitive=True,
-        extra="forbid"
-    )
+    model_config = ConfigDict(env_file=".env", case_sensitive=True, extra="forbid")
 
     # Basic Configuration
     ENVIRONMENT: str = Field(default="development")
@@ -26,7 +21,9 @@ class Settings(BaseSettings):
     PORT: int = Field(default=8080)
 
     # Google Cloud Configuration
-    GOOGLE_CLOUD_PROJECT_ID: str = Field(default="walleterium", alias="GOOGLE_CLOUD_PROJECT")
+    GOOGLE_CLOUD_PROJECT_ID: str = Field(
+        default="walleterium", alias="GOOGLE_CLOUD_PROJECT"
+    )
     VERTEX_AI_LOCATION: str = Field(default="us-central1")
     FIRESTORE_DATABASE: str = Field(default="(default)")
 
@@ -89,7 +86,11 @@ class Settings(BaseSettings):
     def allowed_origins_list(self) -> List[str]:
         """Get ALLOWED_ORIGINS as a list"""
         if isinstance(self.ALLOWED_ORIGINS, str):
-            return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+            return [
+                origin.strip()
+                for origin in self.ALLOWED_ORIGINS.split(",")
+                if origin.strip()
+            ]
         return self.ALLOWED_ORIGINS if isinstance(self.ALLOWED_ORIGINS, list) else []
 
     @property
@@ -111,6 +112,7 @@ class Settings(BaseSettings):
 
 class DevelopmentSettings(Settings):
     """Development-specific settings"""
+
     DEBUG: bool = True
     LOG_LEVEL: str = "DEBUG"
     USE_EMULATORS: bool = True
@@ -120,6 +122,7 @@ class DevelopmentSettings(Settings):
 
 class ProductionSettings(Settings):
     """Production-specific settings"""
+
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
     USE_EMULATORS: bool = False
@@ -130,9 +133,7 @@ class ProductionSettings(Settings):
     TOKEN_EXPIRY_MINUTES: int = 10
 
     # Security
-    ALLOWED_ORIGINS: str = Field(
-        default="https://*.run.app,https://api.raseed-app.com"
-    )
+    ALLOWED_ORIGINS: str = Field(default="https://*.run.app,https://api.raseed-app.com")
 
 
 def get_settings() -> Settings:

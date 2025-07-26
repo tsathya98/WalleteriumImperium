@@ -6,14 +6,17 @@ MVP: Simplified processing with realistic receipt stubs
 
 import asyncio
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
-from datetime import datetime, timedelta
-import uuid
+from datetime import datetime
 
 from app.core.config import get_settings
 from app.core.logging import get_logger, log_async_performance
 from app.models import (
-    ProcessingStatus, ProcessingStage, ProcessingProgress,
-    ReceiptAnalysis, TokenData, ErrorDetail
+    ProcessingStatus,
+    ProcessingStage,
+    ProcessingProgress,
+    ReceiptAnalysis,
+    TokenData,
+    ErrorDetail,
 )
 
 # Type checking imports to avoid circular dependencies
@@ -28,7 +31,11 @@ logger = get_logger(__name__)
 class TokenService:
     """Token-based processing service for MVP"""
 
-    def __init__(self, firestore_service: 'FirestoreService' = None, vertex_ai_service: 'VertexAIReceiptService' = None):
+    def __init__(
+        self,
+        firestore_service: "FirestoreService" = None,
+        vertex_ai_service: "VertexAIReceiptService" = None,
+    ):
         self._processing_tasks: Dict[str, asyncio.Task] = {}
         self._initialized = False
         self._firestore_service = firestore_service
@@ -59,7 +66,9 @@ class TokenService:
             raise RuntimeError("Token service not initialized")
 
     @log_async_performance(logger)
-    async def create_processing_token(self, user_id: str, media_base64: str, media_type: str) -> str:
+    async def create_processing_token(
+        self, user_id: str, media_base64: str, media_type: str
+    ) -> str:
         """Create a new processing token and start background processing"""
         self._ensure_initialized()
 
@@ -69,23 +78,25 @@ class TokenService:
 
             # Start background processing
             processing_task = asyncio.create_task(
-                self._process_receipt_background(token, user_id, media_base64, media_type)
+                self._process_receipt_background(
+                    token, user_id, media_base64, media_type
+                )
             )
 
             # Track the task
             self._processing_tasks[token] = processing_task
 
-            logger.info("Processing token created (MVP)", extra={
-                "token": token,
-                "user_id": user_id
-            })
+            logger.info(
+                "Processing token created (MVP)",
+                extra={"token": token, "user_id": user_id},
+            )
 
             return token
 
         except Exception as e:
-            logger.error(f"Failed to create processing token: {e}", extra={
-                "user_id": user_id
-            })
+            logger.error(
+                f"Failed to create processing token: {e}", extra={"user_id": user_id}
+            )
             raise
 
     async def get_token_status(self, token: str) -> Optional[TokenData]:
@@ -114,29 +125,26 @@ class TokenService:
             return token_data
 
         except Exception as e:
-            logger.error(f"Failed to get token status: {e}", extra={
-                "token": token
-            })
+            logger.error(f"Failed to get token status: {e}", extra={"token": token})
             raise
 
     @log_async_performance(logger)
-    async def _process_receipt_background(self, token: str, user_id: str, media_base64: str, media_type: str):
+    async def _process_receipt_background(
+        self, token: str, user_id: str, media_base64: str, media_type: str
+    ):
         """
         Background receipt processing with progress updates
         Supports both image and video analysis
         """
         try:
-            logger.info("Starting background receipt processing (MVP)", extra={
-                "token": token,
-                "user_id": user_id
-            })
+            logger.info(
+                "Starting background receipt processing (MVP)",
+                extra={"token": token, "user_id": user_id},
+            )
 
             # Stage 1: Analysis (MVP)
             await self._update_progress(
-                token,
-                ProcessingStage.ANALYSIS,
-                50.0,
-                "Analyzing receipt data..."
+                token, ProcessingStage.ANALYSIS, 50.0, "Analyzing receipt data..."
             )
 
             # Process with Enhanced Vertex AI service using injected service
@@ -145,59 +153,62 @@ class TokenService:
                     media_base64, media_type, user_id
                 )
                 # Transform AI result to ReceiptAnalysis model
-                processing_result = self._transform_ai_result_to_receipt_analysis(ai_result, token)
+                processing_result = self._transform_ai_result_to_receipt_analysis(
+                    ai_result, token
+                )
             else:
                 # Fallback to get_vertex_ai_service if not injected
                 from app.services.vertex_ai_service import get_vertex_ai_service
+
                 vertex_ai_service = get_vertex_ai_service()
                 ai_result = await vertex_ai_service.analyze_receipt_media(
                     media_base64, media_type, user_id
                 )
-                processing_result = self._transform_ai_result_to_receipt_analysis(ai_result, token)
+                processing_result = self._transform_ai_result_to_receipt_analysis(
+                    ai_result, token
+                )
 
             # Stage 2: Completion
             await self._update_progress(
                 token,
                 ProcessingStage.COMPLETED,
                 100.0,
-                "Processing completed successfully!"
+                "Processing completed successfully!",
             )
 
             # Update token with final result using injected service
             await self._firestore_service.update_token_status(
-                token=token,
-                status=ProcessingStatus.COMPLETED,
-                result=processing_result
+                token=token, status=ProcessingStatus.COMPLETED, result=processing_result
             )
 
             # Save receipt to database using injected service
             await self._firestore_service.save_receipt(processing_result)
 
-            logger.info("Background receipt processing completed (MVP)", extra={
-                "token": token,
-                "receipt_id": processing_result.receipt_id,
-                "place": processing_result.place,
-                "amount": processing_result.amount
-            })
+            logger.info(
+                "Background receipt processing completed (MVP)",
+                extra={
+                    "token": token,
+                    "receipt_id": processing_result.receipt_id,
+                    "place": processing_result.place,
+                    "amount": processing_result.amount,
+                },
+            )
 
         except Exception as e:
-            logger.error("Background processing failed", extra={
-                "token": token,
-                "user_id": user_id,
-                "error": str(e)
-            })
+            logger.error(
+                "Background processing failed",
+                extra={"token": token, "user_id": user_id, "error": str(e)},
+            )
 
             # Update token with error using injected service
             error_detail = ErrorDetail(
                 code="PROCESSING_FAILED",
                 message=str(e),
-                details={"timestamp": datetime.utcnow().isoformat()}
+                details={"timestamp": datetime.utcnow().isoformat()},
             )
 
             await self._firestore_service.update_token_status(
-                token=token,
-                status=ProcessingStatus.FAILED,
-                error=error_detail.dict()
+                token=token, status=ProcessingStatus.FAILED, error=error_detail.dict()
             )
 
         finally:
@@ -205,11 +216,7 @@ class TokenService:
             self._processing_tasks.pop(token, None)
 
     async def _update_progress(
-        self,
-        token: str,
-        stage: ProcessingStage,
-        percentage: float,
-        message: str
+        self, token: str, stage: ProcessingStage, percentage: float, message: str
     ):
         """Update processing progress"""
         try:
@@ -225,27 +232,26 @@ class TokenService:
                 stage=stage,
                 percentage=percentage,
                 message=message,
-                estimated_remaining=remaining_seconds
+                estimated_remaining=remaining_seconds,
             )
 
             # Use injected service
             await self._firestore_service.update_token_status(
                 token=token,
                 status=ProcessingStatus.PROCESSING,
-                progress=progress.dict()
+                progress=progress.dict(),
             )
 
-            logger.debug(f"Progress updated (MVP): {token}", extra={
-                "token": token,
-                "stage": stage.value,
-                "percentage": percentage
-            })
+            logger.debug(
+                f"Progress updated (MVP): {token}",
+                extra={"token": token, "stage": stage.value, "percentage": percentage},
+            )
 
         except Exception as e:
-            logger.error(f"Failed to update progress: {e}", extra={
-                "token": token,
-                "stage": stage.value
-            })
+            logger.error(
+                f"Failed to update progress: {e}",
+                extra={"token": token, "stage": stage.value},
+            )
 
     async def retry_failed_processing(self, token: str) -> bool:
         """Retry failed processing"""
@@ -269,10 +275,10 @@ class TokenService:
             # Increment retry count using injected service
             retry_count = await self._firestore_service.increment_retry_count(token)
 
-            logger.info(f"Retrying processing (attempt {retry_count}) - MVP", extra={
-                "token": token,
-                "retry_count": retry_count
-            })
+            logger.info(
+                f"Retrying processing (attempt {retry_count}) - MVP",
+                extra={"token": token, "retry_count": retry_count},
+            )
 
             # Reset token status using injected service
             await self._firestore_service.update_token_status(
@@ -282,9 +288,9 @@ class TokenService:
                     stage=ProcessingStage.ANALYSIS,
                     percentage=0.0,
                     message="Retrying processing...",
-                    estimated_remaining=10
+                    estimated_remaining=10,
                 ).dict(),
-                error=None
+                error=None,
             )
 
             # Note: In MVP, we don't store original image data for retry
@@ -293,9 +299,7 @@ class TokenService:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to retry processing: {e}", extra={
-                "token": token
-            })
+            logger.error(f"Failed to retry processing: {e}", extra={"token": token})
             return False
 
     async def cancel_processing(self, token: str) -> bool:
@@ -316,17 +320,15 @@ class TokenService:
                 status=ProcessingStatus.FAILED,
                 error=ErrorDetail(
                     code="PROCESSING_CANCELLED",
-                    message="Processing was cancelled by user"
-                ).dict()
+                    message="Processing was cancelled by user",
+                ).dict(),
             )
 
             logger.info(f"Processing cancelled: {token}")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to cancel processing: {e}", extra={
-                "token": token
-            })
+            logger.error(f"Failed to cancel processing: {e}", extra={"token": token})
             return False
 
     async def _background_cleanup_task(self):
@@ -344,7 +346,8 @@ class TokenService:
 
                 # Clean up completed tasks
                 completed_tokens = [
-                    token for token, task in self._processing_tasks.items()
+                    token
+                    for token, task in self._processing_tasks.items()
                     if task.done()
                 ]
 
@@ -360,14 +363,18 @@ class TokenService:
     async def get_processing_stats(self) -> Dict[str, Any]:
         """Get processing statistics"""
         try:
-            active_tasks = len([t for t in self._processing_tasks.values() if not t.done()])
-            completed_tasks = len([t for t in self._processing_tasks.values() if t.done()])
+            active_tasks = len(
+                [t for t in self._processing_tasks.values() if not t.done()]
+            )
+            completed_tasks = len(
+                [t for t in self._processing_tasks.values() if t.done()]
+            )
 
             return {
                 "active_processing_tokens": active_tasks,
                 "completed_tasks": completed_tasks,
                 "total_tracked_tasks": len(self._processing_tasks),
-                "mode": "mvp"
+                "mode": "mvp",
             }
 
         except Exception as e:
@@ -387,16 +394,15 @@ class TokenService:
                 "mode": "mvp",
                 "processing_stats": stats,
                 "max_retries": settings.MAX_RETRIES,
-                "token_expiry_minutes": settings.TOKEN_EXPIRY_MINUTES
+                "token_expiry_minutes": settings.TOKEN_EXPIRY_MINUTES,
             }
 
         except Exception as e:
-            return {
-                "status": "unhealthy",
-                "error": str(e)
-            }
+            return {"status": "unhealthy", "error": str(e)}
 
-    def _transform_ai_result_to_receipt_analysis(self, ai_result: Dict[str, Any], token: str) -> ReceiptAnalysis:
+    def _transform_ai_result_to_receipt_analysis(
+        self, ai_result: Dict[str, Any], token: str
+    ) -> ReceiptAnalysis:
         """
         Transform the enhanced AI analysis result to ReceiptAnalysis model
 
@@ -409,7 +415,9 @@ class TokenService:
         """
         try:
             if ai_result["status"] != "success":
-                raise ValueError(f"AI analysis failed: {ai_result.get('error', 'Unknown error')}")
+                raise ValueError(
+                    f"AI analysis failed: {ai_result.get('error', 'Unknown error')}"
+                )
 
             data = ai_result["data"]
             store_info = data.get("store_info", {})
@@ -422,27 +430,34 @@ class TokenService:
 
             # Combine date and time into ISO 8601 format
             if transaction_date and transaction_date not in ["Unknown", "Not provided"]:
-                if transaction_time and transaction_time not in ["Unknown", "Not provided"]:
+                if transaction_time and transaction_time not in [
+                    "Unknown",
+                    "Not provided",
+                ]:
                     time_str = f"{transaction_date}T{transaction_time}:00Z"
                 else:
-                    time_str = f"{transaction_date}T12:00:00Z"  # Default to noon if no time
+                    time_str = (
+                        f"{transaction_date}T12:00:00Z"  # Default to noon if no time
+                    )
             else:
-                time_str = datetime.utcnow().isoformat() + "Z"  # Use current time as fallback
+                time_str = (
+                    datetime.utcnow().isoformat() + "Z"
+                )  # Use current time as fallback
 
             # Determine category based on items
             category = self._determine_category_from_items(items)
 
             # Check for warranty indicators (basic heuristic)
             warranty = any(
-                "warranty" in item.get("name", "").lower() or
-                item.get("category") == "electronics"
+                "warranty" in item.get("name", "").lower()
+                or item.get("category") == "electronics"
                 for item in items
             )
 
             # Check for subscription indicators
             recurring = any(
-                "subscription" in item.get("name", "").lower() or
-                "monthly" in item.get("name", "").lower()
+                "subscription" in item.get("name", "").lower()
+                or "monthly" in item.get("name", "").lower()
                 for item in items
             )
 
@@ -460,24 +475,30 @@ class TokenService:
                 subscription=None,  # TODO: Could be enhanced with AI analysis
                 warrantyDetails=None,  # TODO: Could be enhanced with AI analysis
                 receipt_id=token,  # Use token as receipt ID
-                processing_time=ai_result.get("processing_time")
+                processing_time=ai_result.get("processing_time"),
             )
 
-            logger.info("Successfully transformed AI result to ReceiptAnalysis", extra={
-                "receipt_id": token,
-                "store_name": receipt_analysis.place,
-                "amount": receipt_analysis.amount,
-                "items_count": len(items)
-            })
+            logger.info(
+                "Successfully transformed AI result to ReceiptAnalysis",
+                extra={
+                    "receipt_id": token,
+                    "store_name": receipt_analysis.place,
+                    "amount": receipt_analysis.amount,
+                    "items_count": len(items),
+                },
+            )
 
             return receipt_analysis
 
         except Exception as e:
-            logger.error("Failed to transform AI result", extra={
-                "token": token,
-                "error": str(e),
-                "ai_result_status": ai_result.get("status", "unknown")
-            })
+            logger.error(
+                "Failed to transform AI result",
+                extra={
+                    "token": token,
+                    "error": str(e),
+                    "ai_result_status": ai_result.get("status", "unknown"),
+                },
+            )
             raise ValueError(f"Failed to transform AI result: {str(e)}")
 
     def _determine_category_from_items(self, items: List[Dict[str, Any]]) -> str:
@@ -502,12 +523,14 @@ class TokenService:
             "electronics": "Electronics",
             "clothing": "Shopping",
             "pharmacy": "Healthcare",
-            "other": "Other"
+            "other": "Other",
         }
 
         return category_mapping.get(most_common, "Other")
 
-    def _generate_description(self, store_info: Dict[str, Any], items: List[Dict[str, Any]]) -> str:
+    def _generate_description(
+        self, store_info: Dict[str, Any], items: List[Dict[str, Any]]
+    ) -> str:
         """Generate a description based on store and items"""
         store_name = store_info.get("name", "Unknown Store")
         if store_name in ["Not provided", "Unknown"]:
@@ -535,7 +558,9 @@ class TokenService:
 
         # Wait for tasks to complete
         if self._processing_tasks:
-            await asyncio.gather(*self._processing_tasks.values(), return_exceptions=True)
+            await asyncio.gather(
+                *self._processing_tasks.values(), return_exceptions=True
+            )
 
         self._processing_tasks.clear()
         self._initialized = False
