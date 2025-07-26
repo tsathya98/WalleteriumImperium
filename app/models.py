@@ -50,9 +50,110 @@ class ProcessingStage(str, Enum):
     COMPLETED = "completed"
 
 
-# Nested Objects for MVP
+# Nested Objects for Enhanced Structure
+class WarrantyDetails(BaseModel):
+    """Warranty details for items or overall receipt"""
+
+    validUntil: str = Field(..., description="Warranty expiry date (ISO 8601)")
+    provider: Optional[str] = Field(None, description="Warranty provider name")
+    coverage: Optional[str] = Field(None, description="Coverage description")
+
+    @field_validator("validUntil")
+    @classmethod
+    def validate_valid_until(cls, v: str) -> str:
+        try:
+            datetime.fromisoformat(v.replace("Z", "+00:00"))
+            return v
+        except ValueError:
+            raise ValueError("validUntil must be in ISO 8601 format")
+
+
+class RecurringDetails(BaseModel):
+    """Recurring/subscription details for items or overall receipt"""
+
+    frequency: str = Field(..., description="Billing frequency (monthly, yearly, etc.)")
+    nextBillingDate: Optional[str] = Field(None, description="Next billing date (ISO 8601)")
+    subscriptionType: Optional[str] = Field(None, description="Type of subscription")
+    autoRenew: Optional[bool] = Field(None, description="Auto-renewal status")
+
+    @field_validator("nextBillingDate")
+    @classmethod
+    def validate_next_billing_date(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        try:
+            datetime.fromisoformat(v.replace("Z", "+00:00"))
+            return v
+        except ValueError:
+            raise ValueError("nextBillingDate must be in ISO 8601 format")
+
+
+class ItemDetail(BaseModel):
+    """Detailed model for a single item on a receipt"""
+    
+    name: str = Field(..., description="Item name")
+    quantity: float = Field(..., description="Item quantity")
+    unit_price: Optional[float] = Field(None, description="Price per unit")
+    total_price: float = Field(..., description="Total price for this item")
+    category: Optional[str] = Field(None, description="Assigned category for this item")
+    description: Optional[str] = Field(None, description="Detailed item description")
+    
+    # Enhanced warranty and subscription handling
+    warranty: Optional[WarrantyDetails] = Field(None, description="Warranty details if applicable")
+    recurring: Optional[RecurringDetails] = Field(None, description="Subscription details if applicable")
+
+
+class ProcessingMetadata(BaseModel):
+    """AI processing metadata"""
+    
+    vendor_type: str = Field(..., description="AI-classified vendor type (RESTAURANT, SUPERMARKET, etc.)")
+    confidence: str = Field(..., description="AI confidence level (high, medium, low)")
+    processing_time_seconds: Optional[float] = Field(None, description="Processing time in seconds")
+    model_version: str = Field(..., description="AI model version used")
+
+
+# Main Receipt Analysis Model (Enhanced Version)
+class ReceiptAnalysis(BaseModel):
+    """Enhanced receipt analysis result with item-level details and metadata"""
+
+    # Core required fields
+    receipt_id: str = Field(..., description="Unique receipt identifier")
+    place: str = Field(..., description="Store or merchant name where transaction occurred")
+    time: str = Field(..., description="Transaction timestamp (ISO 8601)")
+    amount: float = Field(..., ge=0, description="Transaction amount (positive)")
+    transactionType: TransactionType = Field(..., description="Transaction type")
+
+    # Enhanced categorization and description
+    category: Optional[str] = Field(None, description="Overall transaction category")
+    description: Optional[str] = Field(None, description="Detailed transaction description")
+    importance: Optional[ImportanceLevel] = Field(None, description="Transaction importance level")
+
+    # Enhanced warranty and subscription handling (top-level summary)
+    warranty: Optional[WarrantyDetails] = Field(None, description="Warranty summary if any items have warranties")
+    recurring: Optional[RecurringDetails] = Field(None, description="Subscription summary if this is a recurring transaction")
+
+    # Universal itemization - always present
+    items: List[ItemDetail] = Field(default=[], description="Detailed list of items from the receipt")
+
+    # AI processing metadata
+    metadata: Optional[ProcessingMetadata] = Field(None, description="AI processing metadata")
+
+    # Legacy fields for backward compatibility
+    processing_time: Optional[float] = Field(None, description="Processing time in seconds (legacy)")
+
+    @field_validator("time")
+    @classmethod
+    def validate_time(cls, v: str) -> str:
+        try:
+            datetime.fromisoformat(v.replace("Z", "+00:00"))
+            return v
+        except ValueError:
+            raise ValueError("time must be in ISO 8601 format")
+
+
+# Legacy nested objects (kept for backward compatibility)
 class SubscriptionDetails(BaseModel):
-    """Subscription details when recurring=true"""
+    """Legacy subscription details - use RecurringDetails instead"""
 
     name: str = Field(..., description="Subscription service name")
     recurrence: RecurrenceType = Field(..., description="Billing frequency")
@@ -66,76 +167,6 @@ class SubscriptionDetails(BaseModel):
             return v
         except ValueError:
             raise ValueError("nextDueDate must be in ISO 8601 format")
-
-
-class WarrantyDetails(BaseModel):
-    """Warranty details when warranty=true"""
-
-    validUntil: str = Field(..., description="Warranty expiry date (ISO 8601)")
-    provider: Optional[str] = Field(None, description="Warranty provider name")
-    termsURL: Optional[str] = Field(None, description="Link to warranty terms")
-
-    @field_validator("validUntil")
-    @classmethod
-    def validate_valid_until(cls, v: str) -> str:
-        try:
-            datetime.fromisoformat(v.replace("Z", "+00:00"))
-            return v
-        except ValueError:
-            raise ValueError("validUntil must be in ISO 8601 format")
-
-
-# Main Receipt Analysis Model (MVP Version)
-class ReceiptAnalysis(BaseModel):
-    """Main receipt analysis result - MVP structure, will be enhanced later"""
-
-    # Core required fields
-    place: str = Field(
-        ..., description="Store or merchant name where transaction occurred"
-    )
-    time: str = Field(..., description="Transaction timestamp (ISO 8601)")
-    amount: float = Field(..., ge=0, description="Transaction amount (positive)")
-    transactionType: TransactionType = Field(..., description="Transaction type")
-
-    # Optional fields
-    category: Optional[str] = Field(
-        None, description="User-defined category (e.g., 'Dining', 'Groceries')"
-    )
-    description: Optional[str] = Field(
-        None, description="Free-form notes about the transaction"
-    )
-    importance: Optional[ImportanceLevel] = Field(
-        None, description="Transaction importance level"
-    )
-    warranty: Optional[bool] = Field(
-        False, description="Does this purchase include a warranty?"
-    )
-    recurring: Optional[bool] = Field(
-        False, description="Is this a recurring/subscription payment?"
-    )
-
-    # Conditional nested objects
-    subscription: Optional[SubscriptionDetails] = Field(
-        None, description="Subscription details (when recurring=true)"
-    )
-    warrantyDetails: Optional[WarrantyDetails] = Field(
-        None, description="Warranty details (when warranty=true)"
-    )
-
-    # MVP metadata (will be enhanced with AI confidence scores later)
-    receipt_id: str = Field(..., description="Unique receipt identifier")
-    processing_time: Optional[float] = Field(
-        None, description="Processing time in seconds"
-    )
-
-    @field_validator("time")
-    @classmethod
-    def validate_time(cls, v: str) -> str:
-        try:
-            datetime.fromisoformat(v.replace("Z", "+00:00"))
-            return v
-        except ValueError:
-            raise ValueError("time must be in ISO 8601 format")
 
 
 # Request Models for Multipart Form Data

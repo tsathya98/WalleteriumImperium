@@ -16,7 +16,6 @@ from app.api import receipts, health
 from app.core.config import get_settings
 from app.core.logging import setup_logging
 from app.services.firestore_service import FirestoreService
-from app.services.vertex_ai_service import get_vertex_ai_service
 from app.services.token_service import TokenService
 from app.utils.monitoring import MetricsCollector
 
@@ -41,13 +40,9 @@ async def lifespan(app: FastAPI):
         await firestore_service.initialize()
         app.state.firestore = firestore_service
 
-        # Initialize vertex AI service
-        vertex_ai_service = get_vertex_ai_service()
-        app.state.vertex_ai = vertex_ai_service
-
-        # Initialize token service with proper dependencies
+        # Initialize enhanced token service (no longer needs vertex AI service)
         token_service_instance = TokenService(
-            firestore_service=firestore_service, vertex_ai_service=vertex_ai_service
+            firestore_service=firestore_service
         )
         await token_service_instance.initialize()
         app.state.token_service = token_service_instance
