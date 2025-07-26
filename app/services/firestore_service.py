@@ -250,7 +250,7 @@ class FirestoreService:
             raise
 
     # Receipt Operations (Updated for MVP)
-    async def save_receipt(self, receipt_data: ReceiptAnalysis) -> str:
+    async def save_receipt(self, user_id: str, receipt_data: ReceiptAnalysis) -> str:
         """Save analyzed receipt to database"""
         self._ensure_initialized()
 
@@ -261,7 +261,11 @@ class FirestoreService:
             doc_ref = self.client.collection("receipts").document(receipt_id)
             receipt_dict = receipt_data.dict()
             receipt_dict.update(
-                {"created_at": datetime.utcnow(), "updated_at": datetime.utcnow()}
+                {
+                    "user_id": user_id,
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                }
             )
 
             await doc_ref.set(receipt_dict)
@@ -323,6 +327,7 @@ class FirestoreService:
             # This would need to be added for proper user isolation
             query = (
                 self.client.collection("receipts")
+                .where("user_id", "==", user_id)
                 .order_by("created_at", direction=firestore.Query.DESCENDING)
                 .limit(limit)
                 .offset(offset)

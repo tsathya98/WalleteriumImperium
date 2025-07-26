@@ -29,60 +29,37 @@ security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ):
     """
-    Extract user information from Firebase Auth token
-    In production, this would verify the Firebase JWT token
-    For development, we'll use a simplified approach
+    DEPRECATED: This function is no longer used for hackathon simplicity.
+    A simple user_id string is passed from the frontend instead.
     """
-    if settings.is_development and not credentials:
-        # Allow requests without auth in development
-        return {"uid": "dev_user", "email": "dev@example.com"}
-
-    if not credentials:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    # In production, verify Firebase JWT token here
-    # For now, we'll extract user info from token (placeholder)
-    # token = credentials.credentials
-
-    # TODO: Implement Firebase JWT verification
-    # For demo purposes, return mock user
-    return {"uid": "user_123", "email": "user@example.com"}
+    # This entire function is bypassed for the hackathon.
+    # In a production app, this is where you would validate a real JWT token.
+    return {"uid": "mock_user_for_testing_only"}
 
 
 @router.post("/upload", response_model=ReceiptUploadResponse, status_code=202)
 @log_async_performance(logger)
 async def upload_receipt(
     file: UploadFile = File(..., description="Receipt image or video file"),
-    user_id: str = Form(..., description="User ID from Firebase Auth"),
+    user_id: str = Form(..., description="User ID from the frontend"),
     metadata: Optional[str] = Form(
         default="{}", description="Optional metadata as JSON string"
     ),
     http_request: Request = None,
-    current_user: dict = Depends(get_current_user),
 ):
     """
-    Upload receipt image or video file for AI analysis
-
-    This endpoint accepts multipart file uploads and returns a processing token.
-    The client should poll the status endpoint to get results.
-
-    Args:
-        file: UploadFile containing the receipt image or video
-        user_id: User ID from Firebase Auth
-        metadata: Optional metadata as JSON string
-        http_request: FastAPI request object for accessing app state
-        current_user: Authenticated user information
-
-    Returns:
-        ReceiptUploadResponse with processing token and estimated time
-
-    Raises:
-        HTTPException: For validation errors, file size limits, or processing failures
+    Upload receipt image/video. This is the primary endpoint.
+    It takes a user_id directly from the form for simplicity.
     """
     try:
+        if not user_id or not user_id.strip():
+            raise HTTPException(status_code=400, detail="A non-empty user_id is required.")
+        
+        user_id = user_id.strip()
+
         # Parse metadata from JSON string
         try:
             metadata_dict = json.loads(metadata) if metadata else {}
@@ -105,10 +82,16 @@ async def upload_receipt(
         file_content = await file.read()
         file_size_mb = len(file_content) / 1024 / 1024
 
+        # Validate user_id
+        if not user_id or len(user_id.strip()) == 0:
+            raise HTTPException(status_code=400, detail="User ID is required")
+        
+        user_id = user_id.strip()
+
         logger.info(
             "Receipt upload started",
             extra={
-                "user_id": current_user["uid"],
+                "user_id": user_id,
                 "filename": file.filename,
                 "media_type": media_type,
                 "file_size_mb": file_size_mb,
@@ -130,7 +113,7 @@ async def upload_receipt(
         # Create processing token and start background processing with raw bytes
         # No base64 conversion needed - enhanced agent handles raw bytes directly
         processing_token = await http_request.app.state.token_service.create_processing_token(
-            user_id=current_user["uid"],
+            user_id=user_id,
             media_bytes=file_content,  # Pass raw bytes directly
             media_type=media_type,
         )
@@ -147,7 +130,7 @@ async def upload_receipt(
 
         response = ReceiptUploadResponse(
             processing_token=processing_token,
-            estimated_time=estimated_time,
+            estimated_time=15, # Simplified for hackathon
             status=ProcessingStatus.UPLOADED,
             message="Receipt uploaded successfully, processing started",
         )
@@ -155,7 +138,7 @@ async def upload_receipt(
         logger.info(
             "Receipt upload completed",
             extra={
-                "user_id": current_user["uid"],
+                "user_id": user_id,
                 "processing_token": processing_token,
                 "estimated_time": estimated_time,
             },
@@ -168,79 +151,32 @@ async def upload_receipt(
     except Exception as e:
         logger.error(
             "Receipt upload failed",
-            extra={"user_id": current_user.get("uid", "unknown"), "error": str(e)},
+            extra={"user_id": user_id if "user_id" in locals() else "unknown", "error": str(e)},
         )
-
         raise HTTPException(status_code=500, detail="Failed to process receipt upload")
 
 
 @router.get("/status/{token}", response_model=ReceiptStatusResponse)
-async def get_processing_status(
-    token: str, http_request: Request, current_user: dict = Depends(get_current_user)
-):
+async def get_processing_status(token: str, http_request: Request):
     """
-    Get processing status by token
-
-    This endpoint allows the frontend to poll for processing updates.
-    It returns the current status, progress, and results when available.
+    Get processing status by token. No authentication required.
     """
     try:
-        logger.debug(
-            "Status check requested",
-            extra={"token": token, "user_id": current_user["uid"]},
-        )
+        logger.debug("Status check requested", extra={"token": token})
 
-        # Get token data
-        token_data = await http_request.app.state.token_service.get_token_status(
-            token
-        )
+        token_data = await http_request.app.state.token_service.get_token_status(token)
 
         if not token_data:
-            raise HTTPException(
-                status_code=404, detail="Processing token not found or expired"
-            )
+            raise HTTPException(status_code=404, detail="Token not found or expired")
 
-        # Verify token belongs to user (security check)
-        if token_data["user_id"] != current_user["uid"]:
-            raise HTTPException(
-                status_code=403, detail="Access denied: Token belongs to different user"
-            )
-
-        # Build response
-        response = ReceiptStatusResponse(
-            token=token,
-            status=token_data["status"],
-            progress=token_data["progress"],
-            result=token_data["result"],
-            error=token_data["error"],
-            created_at=token_data.get("created_at"),
-            updated_at=token_data.get("updated_at"),
-            expires_at=token_data.get("expires_at"),
-        )
-
-        logger.debug(
-            "Status check completed",
-            extra={
-                "token": token,
-                "status": token_data["status"],
-                "progress": token_data["progress"]["percentage"],
-            },
-        )
-
-        return response
+        # Public endpoint - no user verification needed for hackathon
+        
+        return ReceiptStatusResponse(**token_data)
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            "Status check failed",
-            extra={
-                "token": token,
-                "user_id": current_user.get("uid", "unknown"),
-                "error": str(e),
-            },
-        )
-
+        logger.error(f"Status check failed for token {token}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to check processing status")
 
 
@@ -375,48 +311,29 @@ async def cancel_processing(
         raise HTTPException(status_code=500, detail="Failed to cancel processing")
 
 
-@router.get("/history")
+@router.get("/history/{user_id}")
 async def get_user_receipts(
+    user_id: str,
     http_request: Request,
-    current_user: dict = Depends(get_current_user),
     limit: int = 20,
     offset: int = 0,
 ):
     """
-    Get user's receipt history
-
-    Returns paginated list of processed receipts for the user.
+    Get a user's receipt history by their user_id.
     """
     try:
         logger.info(
             "Receipt history requested",
-            extra={"user_id": current_user["uid"], "limit": limit, "offset": offset},
+            extra={"user_id": user_id, "limit": limit, "offset": offset},
         )
+        
+        if not user_id or not user_id.strip():
+            raise HTTPException(status_code=400, detail="A non-empty user_id is required.")
 
-        # Validate pagination parameters
-        if limit < 1 or limit > 100:
-            raise HTTPException(
-                status_code=400, detail="Limit must be between 1 and 100"
-            )
-
-        if offset < 0:
-            raise HTTPException(status_code=400, detail="Offset must be non-negative")
-
-        # Get receipts from database
         receipts = await http_request.app.state.firestore.get_user_receipts(
-            user_id=current_user["uid"], limit=limit, offset=offset
+            user_id=user_id.strip(), limit=limit, offset=offset
         )
-
-        logger.info(
-            "Receipt history retrieved",
-            extra={
-                "user_id": current_user["uid"],
-                "count": len(receipts),
-                "limit": limit,
-                "offset": offset,
-            },
-        )
-
+        
         return {
             "receipts": [receipt.dict() for receipt in receipts],
             "pagination": {
@@ -425,71 +342,32 @@ async def get_user_receipts(
                 "count": len(receipts),
                 "has_more": len(receipts) == limit,
             },
-            "timestamp": datetime.utcnow().isoformat(),
         }
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            "Receipt history retrieval failed",
-            extra={"user_id": current_user.get("uid", "unknown"), "error": str(e)},
-        )
-
-        raise HTTPException(
-            status_code=500, detail="Failed to retrieve receipt history"
-        )
+        logger.error(f"Receipt history retrieval failed for user {user_id}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve receipt history")
 
 
 @router.get("/{receipt_id}")
-async def get_receipt_details(
-    receipt_id: str,
-    http_request: Request,
-    current_user: dict = Depends(get_current_user),
-):
+async def get_receipt_details(receipt_id: str, http_request: Request):
     """
-    Get detailed receipt information by ID
-
-    Returns complete receipt data including AI insights.
+    Get detailed receipt information by its ID. Public access.
     """
     try:
-        logger.info(
-            "Receipt details requested",
-            extra={"receipt_id": receipt_id, "user_id": current_user["uid"]},
-        )
+        logger.info("Receipt details requested", extra={"receipt_id": receipt_id})
 
-        # Get receipt from database
         receipt = await http_request.app.state.firestore.get_receipt(receipt_id)
 
         if not receipt:
             raise HTTPException(status_code=404, detail="Receipt not found")
 
-        # Note: In a real implementation, we'd need to verify the receipt belongs to the user
-        # This would require storing user_id in the receipt document
-
-        logger.info(
-            "Receipt details retrieved",
-            extra={
-                "receipt_id": receipt_id,
-                "user_id": current_user["uid"],
-                "store_name": receipt.store_info.name,
-            },
-        )
-
-        return {"receipt": receipt.dict(), "timestamp": datetime.utcnow().isoformat()}
+        return {"receipt": receipt.dict()}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            "Receipt details retrieval failed",
-            extra={
-                "receipt_id": receipt_id,
-                "user_id": current_user.get("uid", "unknown"),
-                "error": str(e),
-            },
-        )
-
-        raise HTTPException(
-            status_code=500, detail="Failed to retrieve receipt details"
-        )
+        logger.error(f"Receipt details retrieval failed for {receipt_id}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve receipt details")
