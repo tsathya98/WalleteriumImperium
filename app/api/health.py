@@ -5,14 +5,11 @@ Provides comprehensive health monitoring and diagnostics
 
 from fastapi import APIRouter, Request
 from datetime import datetime
-from typing import Dict, Any
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.models import HealthCheckResponse
-from app.services.firestore_service import firestore_service
-from app.services.vertex_ai_service import vertex_ai_service
-from app.services.token_service import token_service
+
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -37,10 +34,10 @@ async def health_check(request: Request):
             "user_agent": request.headers.get("user-agent", "unknown")
         })
         
-        # Check all services
-        firestore_health = await firestore_service.health_check()
-        vertex_ai_health = await vertex_ai_service.health_check()
-        token_service_health = await token_service.health_check()
+        # Check all services using app.state instances
+        firestore_health = await request.app.state.firestore.health_check()
+        vertex_ai_health = await request.app.state.vertex_ai.health_check()
+        token_service_health = await request.app.state.token_service.health_check()
         
         # Determine overall health
         service_statuses = {
@@ -91,7 +88,7 @@ async def health_check(request: Request):
 
 
 @router.get("/health/services")
-async def detailed_health_check():
+async def detailed_health_check(request: Request):
     """
     Detailed health check with individual service information
     
@@ -99,9 +96,9 @@ async def detailed_health_check():
     """
     try:
         # Get detailed health info from each service
-        firestore_details = await firestore_service.health_check()
-        vertex_ai_details = await vertex_ai_service.health_check()
-        token_service_details = await token_service.health_check()
+        firestore_details = await request.app.state.firestore.health_check()
+        vertex_ai_details = await request.app.state.vertex_ai.health_check()
+        token_service_details = await request.app.state.token_service.health_check()
         
         return {
             "timestamp": datetime.utcnow().isoformat(),
@@ -113,7 +110,7 @@ async def detailed_health_check():
             "system_info": {
                 "environment": settings.ENVIRONMENT,
                 "debug_mode": settings.DEBUG,
-                "project_id": settings.GOOGLE_CLOUD_PROJECT,
+                "project_id": settings.GOOGLE_CLOUD_PROJECT_ID,
                 "vertex_ai_location": settings.VERTEX_AI_LOCATION,
                 "emulator_mode": {
                     "firestore": settings.use_firestore_emulator,
@@ -132,7 +129,7 @@ async def detailed_health_check():
 
 
 @router.get("/health/ready")
-async def readiness_check():
+async def readiness_check(request: Request):
     """
     Kubernetes/Cloud Run readiness check
     
@@ -140,8 +137,8 @@ async def readiness_check():
     """
     try:
         # Basic connectivity checks
-        firestore_ready = (await firestore_service.health_check()).get("status") == "healthy"
-        vertex_ai_ready = (await vertex_ai_service.health_check()).get("status") == "healthy"
+        firestore_ready = (await request.app.state.firestore.health_check()).get("status") == "healthy"
+        vertex_ai_ready = (await request.app.state.vertex_ai.health_check()).get("status") == "healthy"
         
         if firestore_ready and vertex_ai_ready:
             return {

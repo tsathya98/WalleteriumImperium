@@ -142,6 +142,9 @@ def get_logger(name: str, **extra_fields) -> LoggerAdapter:
 def log_performance(logger: LoggerAdapter):
     """Decorator to log function performance"""
     def decorator(func):
+        import functools
+        
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             import time
             start_time = time.time()
@@ -185,7 +188,9 @@ def log_async_performance(logger: LoggerAdapter):
     """Decorator to log async function performance"""
     def decorator(func):
         import asyncio
+        import functools
         
+        @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             import time
             start_time = time.time()

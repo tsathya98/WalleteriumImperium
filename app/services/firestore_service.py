@@ -6,7 +6,7 @@ MVP: Simplified operations for receipt analysis data
 
 import asyncio
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 from google.cloud import firestore
@@ -38,7 +38,7 @@ class FirestoreService:
                 logger.info(f"Using Firestore emulator at {settings.FIRESTORE_EMULATOR_HOST}")
             
             self.client = firestore.AsyncClient(
-                project=settings.GOOGLE_CLOUD_PROJECT,
+                project=settings.GOOGLE_CLOUD_PROJECT_ID,
                 database=settings.FIRESTORE_DATABASE
             )
             
@@ -218,7 +218,8 @@ class FirestoreService:
         self._ensure_initialized()
         
         try:
-            now = datetime.utcnow()
+            # Use timezone-aware UTC for Firestore queries (Firestore prefers this)
+            now = datetime.now(timezone.utc)
             
             # Query expired tokens
             query = self.client.collection("processing_tokens")\
@@ -352,16 +353,28 @@ class FirestoreService:
     async def health_check(self) -> Dict[str, Any]:
         """Health check for Firestore service"""
         try:
+            # Check initialization status
             if not self._initialized:
+                logger.warning("Firestore health check: Service not initialized")
                 return {"status": "unhealthy", "error": "Not initialized"}
             
-            # Test basic operations
+            if not self.client:
+                logger.warning("Firestore health check: Client is None")
+                return {"status": "unhealthy", "error": "Client not available"}
+            
+            # Test basic operations with detailed logging
             start_time = datetime.utcnow()
+            logger.debug("Firestore health check: Starting test write")
+            
             test_doc = self.client.collection("_health").document("check")
             await test_doc.set({"timestamp": start_time}, merge=True)
             
+            logger.debug("Firestore health check: Test write successful")
+            
             # Calculate latency
             latency = (datetime.utcnow() - start_time).total_seconds() * 1000
+            
+            logger.debug(f"Firestore health check: Completed successfully, latency: {latency}ms")
             
             return {
                 "status": "healthy",
@@ -371,6 +384,7 @@ class FirestoreService:
             }
             
         except Exception as e:
+            logger.error(f"Firestore health check failed: {e}")
             return {
                 "status": "unhealthy",
                 "error": str(e)

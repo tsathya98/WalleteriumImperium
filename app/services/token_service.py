@@ -5,7 +5,7 @@ MVP: Simplified processing with realistic receipt stubs
 """
 
 import asyncio
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from datetime import datetime, timedelta
 import uuid
 
@@ -15,8 +15,11 @@ from app.models import (
     ProcessingStatus, ProcessingStage, ProcessingProgress, 
     ReceiptAnalysis, TokenData, ErrorDetail
 )
-from app.services.firestore_service import firestore_service
-from app.services.vertex_ai_service import vertex_ai_service
+
+# Type checking imports to avoid circular dependencies
+if TYPE_CHECKING:
+    from app.services.firestore_service import FirestoreService
+    from app.services.vertex_ai_service import VertexAIReceiptService
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -25,13 +28,21 @@ logger = get_logger(__name__)
 class TokenService:
     """Token-based processing service for MVP"""
     
-    def __init__(self):
+    def __init__(self, firestore_service: 'FirestoreService' = None, vertex_ai_service: 'VertexAIReceiptService' = None):
         self._processing_tasks: Dict[str, asyncio.Task] = {}
         self._initialized = False
+        self._firestore_service = firestore_service
+        self._vertex_ai_service = vertex_ai_service
     
     async def initialize(self):
         """Initialize token service"""
         try:
+            # Validate dependencies
+            if not self._firestore_service:
+                raise RuntimeError("FirestoreService dependency not provided")
+            if not self._vertex_ai_service:
+                raise RuntimeError("VertexAI service dependency not provided")
+            
             # Start background cleanup task
             asyncio.create_task(self._background_cleanup_task())
             self._initialized = True
@@ -53,8 +64,8 @@ class TokenService:
         self._ensure_initialized()
         
         try:
-            # Create token in database
-            token = await firestore_service.create_token(user_id)
+            # Create token in database using injected service
+            token = await self._firestore_service.create_token(user_id)
             
             # Start background processing
             processing_task = asyncio.create_task(
@@ -82,14 +93,21 @@ class TokenService:
         self._ensure_initialized()
         
         try:
-            # Get token from database
-            token_data = await firestore_service.get_token(token)
+            # Get token from database using injected service
+            token_data = await self._firestore_service.get_token(token)
             
             if not token_data:
                 return None
             
-            # Check if token is expired
-            if datetime.utcnow() > token_data.expires_at:
+            # Check if token is expired (handle timezone-aware/naive comparison)
+            now_utc = datetime.utcnow()
+            expires_at = token_data.expires_at
+            
+            # Convert timezone-aware to naive for comparison if needed
+            if expires_at.tzinfo is not None:
+                expires_at = expires_at.replace(tzinfo=None)
+            
+            if now_utc > expires_at:
                 logger.warning(f"Token expired: {token}")
                 return None
             
@@ -100,7 +118,7 @@ class TokenService:
                 "token": token
             })
             raise
-    
+
     @log_async_performance(logger)
     async def _process_receipt_background(self, token: str, user_id: str, image_base64: str):
         """
@@ -121,10 +139,21 @@ class TokenService:
                 "Analyzing receipt data..."
             )
             
-            # Process with Receipt Analysis service (MVP stubs)
-            processing_result = await vertex_ai_service.process_receipt_image(
-                image_base64, user_id
-            )
+            # Process with Enhanced Vertex AI service using injected service
+            if self._vertex_ai_service:
+                ai_result = await self._vertex_ai_service.analyze_receipt_image(
+                    image_base64, user_id
+                )
+                # Transform AI result to ReceiptAnalysis model
+                processing_result = self._transform_ai_result_to_receipt_analysis(ai_result, token)
+            else:
+                # Fallback to get_vertex_ai_service if not injected
+                from app.services.vertex_ai_service import get_vertex_ai_service
+                vertex_ai_service = get_vertex_ai_service()
+                ai_result = await vertex_ai_service.analyze_receipt_image(
+                    image_base64, user_id
+                )
+                processing_result = self._transform_ai_result_to_receipt_analysis(ai_result, token)
             
             # Stage 2: Completion
             await self._update_progress(
@@ -134,15 +163,15 @@ class TokenService:
                 "Processing completed successfully!"
             )
             
-            # Update token with final result
-            await firestore_service.update_token_status(
+            # Update token with final result using injected service
+            await self._firestore_service.update_token_status(
                 token=token,
                 status=ProcessingStatus.COMPLETED,
                 result=processing_result
             )
             
-            # Save receipt to database
-            await firestore_service.save_receipt(processing_result)
+            # Save receipt to database using injected service
+            await self._firestore_service.save_receipt(processing_result)
             
             logger.info("Background receipt processing completed (MVP)", extra={
                 "token": token,
@@ -158,14 +187,14 @@ class TokenService:
                 "error": str(e)
             })
             
-            # Update token with error
+            # Update token with error using injected service
             error_detail = ErrorDetail(
                 code="PROCESSING_FAILED",
                 message=str(e),
                 details={"timestamp": datetime.utcnow().isoformat()}
             )
             
-            await firestore_service.update_token_status(
+            await self._firestore_service.update_token_status(
                 token=token,
                 status=ProcessingStatus.FAILED,
                 error=error_detail.dict()
@@ -199,7 +228,8 @@ class TokenService:
                 estimated_remaining=remaining_seconds
             )
             
-            await firestore_service.update_token_status(
+            # Use injected service
+            await self._firestore_service.update_token_status(
                 token=token,
                 status=ProcessingStatus.PROCESSING,
                 progress=progress.dict()
@@ -222,8 +252,8 @@ class TokenService:
         self._ensure_initialized()
         
         try:
-            # Get token data
-            token_data = await firestore_service.get_token(token)
+            # Get token data using injected service
+            token_data = await self._firestore_service.get_token(token)
             if not token_data:
                 return False
             
@@ -236,16 +266,16 @@ class TokenService:
                 logger.warning(f"Token not in failed state: {token}")
                 return False
             
-            # Increment retry count
-            retry_count = await firestore_service.increment_retry_count(token)
+            # Increment retry count using injected service
+            retry_count = await self._firestore_service.increment_retry_count(token)
             
             logger.info(f"Retrying processing (attempt {retry_count}) - MVP", extra={
                 "token": token,
                 "retry_count": retry_count
             })
             
-            # Reset token status
-            await firestore_service.update_token_status(
+            # Reset token status using injected service
+            await self._firestore_service.update_token_status(
                 token=token,
                 status=ProcessingStatus.PROCESSING,
                 progress=ProcessingProgress(
@@ -280,8 +310,8 @@ class TokenService:
                     task.cancel()
                 self._processing_tasks.pop(token, None)
             
-            # Update token status
-            await firestore_service.update_token_status(
+            # Update token status using injected service
+            await self._firestore_service.update_token_status(
                 token=token,
                 status=ProcessingStatus.FAILED,
                 error=ErrorDetail(
@@ -306,8 +336,8 @@ class TokenService:
                 # Sleep for 5 minutes
                 await asyncio.sleep(300)
                 
-                # Clean up expired tokens
-                deleted_count = await firestore_service.cleanup_expired_tokens()
+                # Clean up expired tokens using injected service
+                deleted_count = await self._firestore_service.cleanup_expired_tokens()
                 
                 if deleted_count > 0:
                     logger.info(f"Cleaned up {deleted_count} expired tokens")
@@ -366,6 +396,133 @@ class TokenService:
                 "error": str(e)
             }
     
+    def _transform_ai_result_to_receipt_analysis(self, ai_result: Dict[str, Any], token: str) -> ReceiptAnalysis:
+        """
+        Transform the enhanced AI analysis result to ReceiptAnalysis model
+        
+        Args:
+            ai_result: Result from Vertex AI service
+            token: Processing token for receipt_id
+            
+        Returns:
+            ReceiptAnalysis object compatible with the app models
+        """
+        try:
+            if ai_result["status"] != "success":
+                raise ValueError(f"AI analysis failed: {ai_result.get('error', 'Unknown error')}")
+            
+            data = ai_result["data"]
+            store_info = data.get("store_info", {})
+            totals = data.get("totals", {})
+            items = data.get("items", [])
+            
+            # Extract date and time
+            transaction_date = store_info.get("date")
+            transaction_time = store_info.get("time")
+            
+            # Combine date and time into ISO 8601 format
+            if transaction_date and transaction_date not in ["Unknown", "Not provided"]:
+                if transaction_time and transaction_time not in ["Unknown", "Not provided"]:
+                    time_str = f"{transaction_date}T{transaction_time}:00Z"
+                else:
+                    time_str = f"{transaction_date}T12:00:00Z"  # Default to noon if no time
+            else:
+                time_str = datetime.utcnow().isoformat() + "Z"  # Use current time as fallback
+            
+            # Determine category based on items
+            category = self._determine_category_from_items(items)
+            
+            # Check for warranty indicators (basic heuristic)
+            warranty = any(
+                "warranty" in item.get("name", "").lower() or 
+                item.get("category") == "electronics"
+                for item in items
+            )
+            
+            # Check for subscription indicators
+            recurring = any(
+                "subscription" in item.get("name", "").lower() or
+                "monthly" in item.get("name", "").lower()
+                for item in items
+            )
+            
+            # Create ReceiptAnalysis object
+            receipt_analysis = ReceiptAnalysis(
+                place=store_info.get("name", "Unknown Store"),
+                time=time_str,
+                amount=float(totals.get("total", 0)),
+                transactionType="debit",  # Default assumption for receipts
+                category=category,
+                description=self._generate_description(store_info, items),
+                importance="medium",  # Default importance
+                warranty=warranty,
+                recurring=recurring,
+                subscription=None,  # TODO: Could be enhanced with AI analysis
+                warrantyDetails=None,  # TODO: Could be enhanced with AI analysis
+                receipt_id=token,  # Use token as receipt ID
+                processing_time=ai_result.get("processing_time")
+            )
+            
+            logger.info("Successfully transformed AI result to ReceiptAnalysis", extra={
+                "receipt_id": token,
+                "store_name": receipt_analysis.place,
+                "amount": receipt_analysis.amount,
+                "items_count": len(items)
+            })
+            
+            return receipt_analysis
+            
+        except Exception as e:
+            logger.error("Failed to transform AI result", extra={
+                "token": token,
+                "error": str(e),
+                "ai_result_status": ai_result.get("status", "unknown")
+            })
+            raise ValueError(f"Failed to transform AI result: {str(e)}")
+    
+    def _determine_category_from_items(self, items: List[Dict[str, Any]]) -> str:
+        """Determine overall category based on item categories"""
+        if not items:
+            return "other"
+        
+        category_counts = {}
+        for item in items:
+            category = item.get("category", "other")
+            category_counts[category] = category_counts.get(category, 0) + 1
+        
+        # Return the most common category, with some smart mapping
+        most_common = max(category_counts, key=category_counts.get)
+        
+        # Map to common expense categories
+        category_mapping = {
+            "food": "Groceries",
+            "beverage": "Dining",
+            "household": "Household",
+            "personal_care": "Personal Care",
+            "electronics": "Electronics",
+            "clothing": "Shopping",
+            "pharmacy": "Healthcare",
+            "other": "Other"
+        }
+        
+        return category_mapping.get(most_common, "Other")
+    
+    def _generate_description(self, store_info: Dict[str, Any], items: List[Dict[str, Any]]) -> str:
+        """Generate a description based on store and items"""
+        store_name = store_info.get("name", "Unknown Store")
+        if store_name in ["Not provided", "Unknown"]:
+            store_name = "Unknown Store"
+            
+        items_count = len(items)
+        
+        if items_count == 0:
+            return f"Transaction at {store_name}"
+        elif items_count == 1:
+            item_name = items[0].get("name", "item")
+            return f"{item_name} from {store_name}"
+        else:
+            return f"{items_count} items from {store_name}"
+    
     async def shutdown(self):
         """Shutdown token service gracefully"""
         logger.info("Shutting down token service (MVP)...")
@@ -386,5 +543,6 @@ class TokenService:
         logger.info("Token service shutdown complete")
 
 
-# Global service instance
+# Global service instance (deprecated - use dependency injection)
+# This is kept for backward compatibility but should not be used
 token_service = TokenService()

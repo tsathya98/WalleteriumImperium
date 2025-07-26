@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     PORT: int = Field(default=8080)
     
     # Google Cloud Configuration
-    GOOGLE_CLOUD_PROJECT: Optional[str] = Field(default=None)
-    VERTEX_AI_LOCATION: str = Field(default="asia-south1")
+    GOOGLE_CLOUD_PROJECT_ID: str = Field(default="walleterium", alias="GOOGLE_CLOUD_PROJECT")
+    VERTEX_AI_LOCATION: str = Field(default="us-central1")
     FIRESTORE_DATABASE: str = Field(default="(default)")
     
     # API Configuration
@@ -46,10 +46,13 @@ class Settings(BaseSettings):
     ENABLE_CACHE: bool = Field(default=True)
     CACHE_TTL: int = Field(default=3600)  # 1 hour
     
-    # Vertex AI Configuration
-    VERTEX_AI_MODEL: str = Field(default="gemini-2.0-flash-exp")
+    # Vertex AI Configuration - Enhanced for Receipt Analysis
+    VERTEX_AI_MODEL: str = Field(default="gemini-2.5-flash")
     VERTEX_AI_TEMPERATURE: float = Field(default=0.1)
-    VERTEX_AI_MAX_TOKENS: int = Field(default=2048)
+    VERTEX_AI_MAX_TOKENS: int = Field(default=8192)
+    VERTEX_AI_TOP_P: float = Field(default=0.8)
+    VERTEX_AI_TOP_K: int = Field(default=40)
+    VERTEX_AI_MAX_RETRIES: int = Field(default=3)
     
     # Development/Testing Configuration
     USE_EMULATORS: bool = Field(default=False)
@@ -72,12 +75,15 @@ class Settings(BaseSettings):
             raise ValueError(f"LOG_LEVEL must be one of {allowed}")
         return v.upper()
     
-    @field_validator("GOOGLE_CLOUD_PROJECT")
+    @field_validator("GOOGLE_CLOUD_PROJECT_ID")
     @classmethod
-    def validate_project_in_production(cls, v: Optional[str], info) -> Optional[str]:
+    def validate_project_in_production(cls, v: str, info) -> str:
+        # Validate that project ID is set in production
         # Note: In Pydantic v2, we need to access other field values differently
         # For now, we'll validate this in the application startup
-        return v
+        if not v or len(v.strip()) == 0:
+            raise ValueError("GOOGLE_CLOUD_PROJECT_ID is required")
+        return v.strip()
     
     @property
     def allowed_origins_list(self) -> List[str]:

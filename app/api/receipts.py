@@ -17,8 +17,9 @@ from app.models import (
     ProcessingStatus, ProcessingProgress, ProcessingStage,
     ValidationError, APIError
 )
-from app.services.token_service import token_service
-from app.services.firestore_service import firestore_service
+# Import service classes only (not instances)
+from app.services.token_service import TokenService
+from app.services.firestore_service import FirestoreService
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -49,10 +50,11 @@ async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] =
     return {"uid": "user_123", "email": "user@example.com"}
 
 
-@router.post("/upload", response_model=ReceiptUploadResponse)
+@router.post("/upload", response_model=ReceiptUploadResponse, status_code=202)
 @log_async_performance(logger)
 async def upload_receipt(
     request: ReceiptUploadRequest,
+    http_request: Request,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -91,7 +93,7 @@ async def upload_receipt(
             )
         
         # Create processing token and start background processing
-        processing_token = await token_service.create_processing_token(
+        processing_token = await http_request.app.state.token_service.create_processing_token(
             user_id=current_user["uid"],
             image_base64=request.image_base64
         )
@@ -131,6 +133,7 @@ async def upload_receipt(
 @router.get("/status/{token}", response_model=ReceiptStatusResponse)
 async def get_processing_status(
     token: str,
+    http_request: Request,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -146,7 +149,7 @@ async def get_processing_status(
         })
         
         # Get token data
-        token_data = await token_service.get_token_status(token)
+        token_data = await http_request.app.state.token_service.get_token_status(token)
         
         if not token_data:
             raise HTTPException(
@@ -199,6 +202,7 @@ async def get_processing_status(
 @router.post("/retry/{token}")
 async def retry_processing(
     token: str,
+    http_request: Request,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -213,7 +217,7 @@ async def retry_processing(
         })
         
         # Get token data to verify ownership
-        token_data = await token_service.get_token_status(token)
+        token_data = await http_request.app.state.token_service.get_token_status(token)
         
         if not token_data:
             raise HTTPException(
@@ -229,7 +233,7 @@ async def retry_processing(
             )
         
         # Attempt retry
-        success = await token_service.retry_failed_processing(token)
+        success = await http_request.app.state.token_service.retry_failed_processing(token)
         
         if not success:
             raise HTTPException(
@@ -266,6 +270,7 @@ async def retry_processing(
 @router.delete("/cancel/{token}")
 async def cancel_processing(
     token: str,
+    http_request: Request,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -280,7 +285,7 @@ async def cancel_processing(
         })
         
         # Get token data to verify ownership
-        token_data = await token_service.get_token_status(token)
+        token_data = await http_request.app.state.token_service.get_token_status(token)
         
         if not token_data:
             raise HTTPException(
@@ -296,7 +301,7 @@ async def cancel_processing(
             )
         
         # Attempt cancellation
-        success = await token_service.cancel_processing(token)
+        success = await http_request.app.state.token_service.cancel_processing(token)
         
         if not success:
             raise HTTPException(
@@ -332,6 +337,7 @@ async def cancel_processing(
 
 @router.get("/history")
 async def get_user_receipts(
+    http_request: Request,
     current_user: dict = Depends(get_current_user),
     limit: int = 20,
     offset: int = 0
@@ -362,7 +368,7 @@ async def get_user_receipts(
             )
         
         # Get receipts from database
-        receipts = await firestore_service.get_user_receipts(
+        receipts = await http_request.app.state.firestore.get_user_receipts(
             user_id=current_user["uid"],
             limit=limit,
             offset=offset
@@ -403,6 +409,7 @@ async def get_user_receipts(
 @router.get("/{receipt_id}")
 async def get_receipt_details(
     receipt_id: str,
+    http_request: Request,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -417,7 +424,7 @@ async def get_receipt_details(
         })
         
         # Get receipt from database
-        receipt = await firestore_service.get_receipt(receipt_id)
+        receipt = await http_request.app.state.firestore.get_receipt(receipt_id)
         
         if not receipt:
             raise HTTPException(
