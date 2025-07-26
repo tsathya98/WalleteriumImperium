@@ -18,6 +18,13 @@ Intelligent receipt processing supporting both images and videos with guaranteed
 - **🔍 Advanced Validation**: Pydantic models with mathematical verification
 - **☁️ Cloud-Native**: Designed for Google Cloud Run with auto-scaling
 - **🔥 Firestore Integration**: Persistent storage with real-time data access
+- **🤖 Receipt Scanning Agent**: A sophisticated agent that can scan and process receipts from images and videos.
+
+### Onboarding Agent
+
+The Onboarding Agent is a conversational AI designed to create a comprehensive user profile by understanding their financial habits, goals, and risk appetite. It uses a friendly, multi-lingual, and adaptive conversational approach to gather necessary details for personalizing the user's experience.
+
+For more details, see the [Onboarding Agent README](agents/onboarding_agent/README.md).
 
 ---
 

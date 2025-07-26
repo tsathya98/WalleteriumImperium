@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.api import receipts, health
+from app.api import onboarding as onboarding_api
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.services.firestore_service import FirestoreService
@@ -137,6 +138,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 # Include routers
 app.include_router(receipts.router, prefix="/api/v1/receipts", tags=["receipts"])
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
+app.include_router(onboarding_api.router, prefix="/api/v1/onboarding", tags=["onboarding"])
 
 
 @app.get("/")
