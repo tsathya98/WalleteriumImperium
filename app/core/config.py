@@ -66,11 +66,22 @@ class Settings(BaseSettings):
 
     @field_validator("LOG_LEVEL")
     @classmethod
-    def validate_log_level(cls, v: str) -> str:
+    def validate_log_level(cls, v) -> str:
         allowed = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-        if v.upper() not in allowed:
+        
+        # Handle various input types gracefully
+        if isinstance(v, list):
+            v = v[0] if v else "INFO"
+        
+        # Convert to string if needed
+        if not isinstance(v, str):
+            v = str(v)
+        
+        # Validate and return uppercase
+        v_upper = v.upper()
+        if v_upper not in allowed:
             raise ValueError(f"LOG_LEVEL must be one of {allowed}")
-        return v.upper()
+        return v_upper
 
     @field_validator("GOOGLE_CLOUD_PROJECT_ID")
     @classmethod

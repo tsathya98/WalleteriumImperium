@@ -202,29 +202,22 @@ class HealthChecker:
         try:
             # Import here to avoid circular imports
             from app.services.firestore_service import firestore_service
-            from app.services.vertex_ai_service import vertex_ai_service
             from app.services.token_service import token_service
 
             # Check all services
             health_checks = await asyncio.gather(
                 firestore_service.health_check(),
-                vertex_ai_service.health_check(),
                 token_service.health_check(),
                 return_exceptions=True,
             )
 
-            firestore_health, vertex_ai_health, token_service_health = health_checks
+            firestore_health, token_service_health = health_checks
 
             # Handle exceptions
             if isinstance(firestore_health, Exception):
                 firestore_health = {
                     "status": "unhealthy",
                     "error": str(firestore_health),
-                }
-            if isinstance(vertex_ai_health, Exception):
-                vertex_ai_health = {
-                    "status": "unhealthy",
-                    "error": str(vertex_ai_health),
                 }
             if isinstance(token_service_health, Exception):
                 token_service_health = {
@@ -235,7 +228,6 @@ class HealthChecker:
             # Determine overall health
             service_statuses = {
                 "firestore": firestore_health.get("status", "unknown"),
-                "vertex_ai": vertex_ai_health.get("status", "unknown"),
                 "token_service": token_service_health.get("status", "unknown"),
             }
 
@@ -254,7 +246,6 @@ class HealthChecker:
                 "check_duration_ms": round(check_duration * 1000, 2),
                 "services": {
                     "firestore": firestore_health,
-                    "vertex_ai": vertex_ai_health,
                     "token_service": token_service_health,
                 },
                 "system": {

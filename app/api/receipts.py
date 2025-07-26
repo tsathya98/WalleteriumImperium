@@ -8,7 +8,6 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, Request, Depends, UploadFile
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime
-import base64
 from typing import Optional
 
 from app.core.config import get_settings
@@ -128,17 +127,12 @@ async def upload_receipt(
                 detail=f"{media_type.title()} too large ({file_size_mb:.2f}MB). Maximum size: {max_size_mb}MB",
             )
 
-        # Convert file content to base64 for internal processing
-        # (Vertex AI still requires base64, but we do the conversion internally)
-        media_base64 = base64.b64encode(file_content).decode("utf-8")
-
-        # Create processing token and start background processing
-        processing_token = (
-            await http_request.app.state.token_service.create_processing_token(
-                user_id=current_user["uid"],
-                media_base64=media_base64,
-                media_type=media_type,
-            )
+        # Create processing token and start background processing with raw bytes
+        # No base64 conversion needed - enhanced agent handles raw bytes directly
+        processing_token = await http_request.app.state.token_service.create_processing_token(
+            user_id=current_user["uid"],
+            media_bytes=file_content,  # Pass raw bytes directly
+            media_type=media_type,
         )
 
         # Estimate processing time based on media type and size
@@ -197,7 +191,9 @@ async def get_processing_status(
         )
 
         # Get token data
-        token_data = await http_request.app.state.token_service.get_token_status(token)
+        token_data = await http_request.app.state.token_service.get_token_status(
+            token
+        )
 
         if not token_data:
             raise HTTPException(
@@ -205,7 +201,7 @@ async def get_processing_status(
             )
 
         # Verify token belongs to user (security check)
-        if token_data.user_id != current_user["uid"]:
+        if token_data["user_id"] != current_user["uid"]:
             raise HTTPException(
                 status_code=403, detail="Access denied: Token belongs to different user"
             )
@@ -213,21 +209,21 @@ async def get_processing_status(
         # Build response
         response = ReceiptStatusResponse(
             token=token,
-            status=token_data.status,
-            progress=token_data.progress,
-            result=token_data.result,
-            error=token_data.error,
-            created_at=token_data.created_at,
-            updated_at=token_data.updated_at,
-            expires_at=token_data.expires_at,
+            status=token_data["status"],
+            progress=token_data["progress"],
+            result=token_data["result"],
+            error=token_data["error"],
+            created_at=token_data.get("created_at"),
+            updated_at=token_data.get("updated_at"),
+            expires_at=token_data.get("expires_at"),
         )
 
         logger.debug(
             "Status check completed",
             extra={
                 "token": token,
-                "status": token_data.status.value,
-                "progress": token_data.progress.percentage,
+                "status": token_data["status"],
+                "progress": token_data["progress"]["percentage"],
             },
         )
 
@@ -264,7 +260,9 @@ async def retry_processing(
         )
 
         # Get token data to verify ownership
-        token_data = await http_request.app.state.token_service.get_token_status(token)
+        token_data = await http_request.app.state.token_service.get_token_status(
+            token
+        )
 
         if not token_data:
             raise HTTPException(
@@ -272,7 +270,7 @@ async def retry_processing(
             )
 
         # Verify token belongs to user
-        if token_data.user_id != current_user["uid"]:
+        if token_data["user_id"] != current_user["uid"]:
             raise HTTPException(
                 status_code=403, detail="Access denied: Token belongs to different user"
             )
@@ -330,7 +328,9 @@ async def cancel_processing(
         )
 
         # Get token data to verify ownership
-        token_data = await http_request.app.state.token_service.get_token_status(token)
+        token_data = await http_request.app.state.token_service.get_token_status(
+            token
+        )
 
         if not token_data:
             raise HTTPException(
@@ -338,7 +338,7 @@ async def cancel_processing(
             )
 
         # Verify token belongs to user
-        if token_data.user_id != current_user["uid"]:
+        if token_data["user_id"] != current_user["uid"]:
             raise HTTPException(
                 status_code=403, detail="Access denied: Token belongs to different user"
             )

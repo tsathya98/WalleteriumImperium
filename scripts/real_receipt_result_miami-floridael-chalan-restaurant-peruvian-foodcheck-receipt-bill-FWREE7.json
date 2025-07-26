@@ -1,0 +1,75 @@
+{
+  "token": "proc_1753558519_31ed1d6b",
+  "status": "completed",
+  "progress": {
+    "stage": "completed",
+    "percentage": 100.0,
+    "message": "Processing completed successfully!",
+    "estimated_remaining": null
+  },
+  "result": {
+    "receipt_id": "dev_user_1753538725",
+    "place": "El Chalan Restaurant",
+    "time": "2025-07-27T12:00:00Z",
+    "amount": 0.0,
+    "transactionType": "debit",
+    "category": "Other",
+    "description": "Transaction at El Chalan Restaurant",
+    "importance": "medium",
+    "warranty": null,
+    "recurring": null,
+    "items": [
+      {
+        "name": "CAUSA DE POLLO",
+        "quantity": 1.0,
+        "unit_price": null,
+        "total_price": 0.0,
+        "category": "Restaurant, fast-food",
+        "description": "Peruvian dish featuring chicken and potato",
+        "warranty": null,
+        "recurring": null
+      },
+      {
+        "name": "CEVICHE DE CAMARONES",
+        "quantity": 1.0,
+        "unit_price": null,
+        "total_price": 0.0,
+        "category": "Restaurant, fast-food",
+        "description": "Ceviche made with shrimp",
+        "warranty": null,
+        "recurring": null
+      },
+      {
+        "name": "LIMONADA",
+        "quantity": 1.0,
+        "unit_price": null,
+        "total_price": 0.0,
+        "category": "Restaurant, fast-food",
+        "description": "Lemonade beverage",
+        "warranty": null,
+        "recurring": null
+      },
+      {
+        "name": "PESCADO AL AJILLO",
+        "quantity": 1.0,
+        "unit_price": null,
+        "total_price": 0.0,
+        "category": "Restaurant, fast-food",
+        "description": "Fish prepared in garlic sauce",
+        "warranty": null,
+        "recurring": null
+      }
+    ],
+    "metadata": {
+      "vendor_type": "OTHER",
+      "confidence": "medium",
+      "processing_time_seconds": 38.816701,
+      "model_version": "gemini-2.5-flash"
+    },
+    "processing_time": 38.816701
+  },
+  "error": null,
+  "created_at": "2025-07-26T19:36:03.976344",
+  "updated_at": "2025-07-26T19:36:03.976344",
+  "expires_at": "2025-07-26T19:46:03.976344"
+}

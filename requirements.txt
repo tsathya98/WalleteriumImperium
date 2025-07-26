@@ -7,11 +7,23 @@ fastapi
 # Vertex AI specific dependencies
 google-api-core
 google-auth
-google-cloud-aiplatform
+google-cloud-aiplatform==1.59.0
+google-api-python-client==2.134.0
+google-auth-oauthlib==1.2.0
+langchain-google-vertexai==1.0.4
+requests==2.32.3
+# Pillow==10.4.0
+# pydantic==2.8.2
+pydantic-settings
+uvicorn==0.30.1
 
 # Google Cloud services
 google-cloud-firestore
+google-cloud-storage
 google-generativeai
+
+# Google Agent Development Kit (ADK)
+google-adk
 
 # HTTP and async support
 httpx
@@ -34,6 +46,9 @@ requests
 # Install with: pip install opencv-python
 # Used in test_video_receipt.py for creating synthetic videos
 
+# Production server
+gunicorn
+
 # Utilities
 typing-extensions
-uvicorn[standard]
+uvicorn
