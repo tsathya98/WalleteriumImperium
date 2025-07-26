@@ -38,14 +38,14 @@ async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] =
     if settings.is_development and not credentials:
         # Allow requests without auth in development
         return {"uid": "dev_user", "email": "dev@example.com"}
-    
+
     if not credentials:
         raise HTTPException(status_code=401, detail="Authentication required")
-    
+
     # In production, verify Firebase JWT token here
     # For now, we'll extract user info from token (placeholder)
     token = credentials.credentials
-    
+
     # TODO: Implement Firebase JWT verification
     # For demo purposes, return mock user
     return {"uid": "user_123", "email": "user@example.com"}
@@ -62,20 +62,20 @@ async def upload_receipt(
 ):
     """
     Upload receipt image or video file for AI analysis
-    
+
     This endpoint accepts multipart file uploads and returns a processing token.
     The client should poll the status endpoint to get results.
-    
+
     Args:
         file: UploadFile containing the receipt image or video
-        user_id: User ID from Firebase Auth  
+        user_id: User ID from Firebase Auth
         metadata: Optional metadata as JSON string
         http_request: FastAPI request object for accessing app state
         current_user: Authenticated user information
-    
+
     Returns:
         ReceiptUploadResponse with processing token and estimated time
-        
+
     Raises:
         HTTPException: For validation errors, file size limits, or processing failures
     """
@@ -88,7 +88,7 @@ async def upload_receipt(
                 status_code=400,
                 detail="Invalid metadata JSON format"
             )
-        
+
         # Determine media type from file extension
         file_extension = Path(file.filename or "").suffix.lower()
         if file_extension in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
@@ -100,11 +100,11 @@ async def upload_receipt(
                 status_code=400,
                 detail=f"Unsupported file type: {file_extension}. Supported: images (.jpg, .png) and videos (.mp4, .mov, .avi)"
             )
-        
+
         # Read file content
         file_content = await file.read()
         file_size_mb = len(file_content) / 1024 / 1024
-        
+
         logger.info("Receipt upload started", extra={
             "user_id": current_user["uid"],
             "filename": file.filename,
@@ -112,48 +112,48 @@ async def upload_receipt(
             "file_size_mb": file_size_mb,
             "metadata": metadata_dict
         })
-        
+
         # Validate file size based on type
         max_size_mb = settings.MAX_IMAGE_SIZE_MB if media_type == "image" else 100  # 100MB for videos
-        
+
         if file_size_mb > max_size_mb:
             raise HTTPException(
                 status_code=400,
                 detail=f"{media_type.title()} too large ({file_size_mb:.2f}MB). Maximum size: {max_size_mb}MB"
             )
-        
+
         # Convert file content to base64 for internal processing
         # (Vertex AI still requires base64, but we do the conversion internally)
         media_base64 = base64.b64encode(file_content).decode('utf-8')
-        
+
         # Create processing token and start background processing
         processing_token = await http_request.app.state.token_service.create_processing_token(
             user_id=current_user["uid"],
             media_base64=media_base64,
             media_type=media_type
         )
-        
+
         # Estimate processing time based on media type and size
         if media_type == "image":
             estimated_time = min(30, max(10, int(file_size_mb * 2)))  # 10-30 seconds for images
         else:
             estimated_time = min(60, max(20, int(file_size_mb * 1.5)))  # 20-60 seconds for videos
-        
+
         response = ReceiptUploadResponse(
             processing_token=processing_token,
             estimated_time=estimated_time,
             status=ProcessingStatus.UPLOADED,
             message="Receipt uploaded successfully, processing started"
         )
-        
+
         logger.info("Receipt upload completed", extra={
             "user_id": current_user["uid"],
             "processing_token": processing_token,
             "estimated_time": estimated_time
         })
-        
+
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -161,7 +161,7 @@ async def upload_receipt(
             "user_id": current_user.get("uid", "unknown"),
             "error": str(e)
         })
-        
+
         raise HTTPException(
             status_code=500,
             detail="Failed to process receipt upload"
@@ -176,7 +176,7 @@ async def get_processing_status(
 ):
     """
     Get processing status by token
-    
+
     This endpoint allows the frontend to poll for processing updates.
     It returns the current status, progress, and results when available.
     """
@@ -185,23 +185,23 @@ async def get_processing_status(
             "token": token,
             "user_id": current_user["uid"]
         })
-        
+
         # Get token data
         token_data = await http_request.app.state.token_service.get_token_status(token)
-        
+
         if not token_data:
             raise HTTPException(
                 status_code=404,
                 detail="Processing token not found or expired"
             )
-        
+
         # Verify token belongs to user (security check)
         if token_data.user_id != current_user["uid"]:
             raise HTTPException(
                 status_code=403,
                 detail="Access denied: Token belongs to different user"
             )
-        
+
         # Build response
         response = ReceiptStatusResponse(
             token=token,
@@ -213,15 +213,15 @@ async def get_processing_status(
             updated_at=token_data.updated_at,
             expires_at=token_data.expires_at
         )
-        
+
         logger.debug("Status check completed", extra={
             "token": token,
             "status": token_data.status.value,
             "progress": token_data.progress.get("percentage", 0)
         })
-        
+
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -230,7 +230,7 @@ async def get_processing_status(
             "user_id": current_user.get("uid", "unknown"),
             "error": str(e)
         })
-        
+
         raise HTTPException(
             status_code=500,
             detail="Failed to check processing status"
@@ -245,7 +245,7 @@ async def retry_processing(
 ):
     """
     Retry failed processing
-    
+
     Allows users to retry processing if it failed due to temporary issues.
     """
     try:
@@ -253,43 +253,43 @@ async def retry_processing(
             "token": token,
             "user_id": current_user["uid"]
         })
-        
+
         # Get token data to verify ownership
         token_data = await http_request.app.state.token_service.get_token_status(token)
-        
+
         if not token_data:
             raise HTTPException(
                 status_code=404,
                 detail="Processing token not found or expired"
             )
-        
+
         # Verify token belongs to user
         if token_data.user_id != current_user["uid"]:
             raise HTTPException(
                 status_code=403,
                 detail="Access denied: Token belongs to different user"
             )
-        
+
         # Attempt retry
         success = await http_request.app.state.token_service.retry_failed_processing(token)
-        
+
         if not success:
             raise HTTPException(
                 status_code=400,
                 detail="Retry not possible (max retries reached or invalid status)"
             )
-        
+
         logger.info("Processing retry initiated", extra={
             "token": token,
             "user_id": current_user["uid"]
         })
-        
+
         return {
             "message": "Processing retry initiated",
             "token": token,
             "timestamp": datetime.utcnow().isoformat()
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -298,7 +298,7 @@ async def retry_processing(
             "user_id": current_user.get("uid", "unknown"),
             "error": str(e)
         })
-        
+
         raise HTTPException(
             status_code=500,
             detail="Failed to retry processing"
@@ -313,7 +313,7 @@ async def cancel_processing(
 ):
     """
     Cancel ongoing processing
-    
+
     Allows users to cancel processing that is taking too long.
     """
     try:
@@ -321,43 +321,43 @@ async def cancel_processing(
             "token": token,
             "user_id": current_user["uid"]
         })
-        
+
         # Get token data to verify ownership
         token_data = await http_request.app.state.token_service.get_token_status(token)
-        
+
         if not token_data:
             raise HTTPException(
                 status_code=404,
                 detail="Processing token not found or expired"
             )
-        
+
         # Verify token belongs to user
         if token_data.user_id != current_user["uid"]:
             raise HTTPException(
                 status_code=403,
                 detail="Access denied: Token belongs to different user"
             )
-        
+
         # Attempt cancellation
         success = await http_request.app.state.token_service.cancel_processing(token)
-        
+
         if not success:
             raise HTTPException(
                 status_code=400,
                 detail="Cancellation failed"
             )
-        
+
         logger.info("Processing cancelled", extra={
             "token": token,
             "user_id": current_user["uid"]
         })
-        
+
         return {
             "message": "Processing cancelled successfully",
             "token": token,
             "timestamp": datetime.utcnow().isoformat()
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -366,7 +366,7 @@ async def cancel_processing(
             "user_id": current_user.get("uid", "unknown"),
             "error": str(e)
         })
-        
+
         raise HTTPException(
             status_code=500,
             detail="Failed to cancel processing"
@@ -382,7 +382,7 @@ async def get_user_receipts(
 ):
     """
     Get user's receipt history
-    
+
     Returns paginated list of processed receipts for the user.
     """
     try:
@@ -391,34 +391,34 @@ async def get_user_receipts(
             "limit": limit,
             "offset": offset
         })
-        
+
         # Validate pagination parameters
         if limit < 1 or limit > 100:
             raise HTTPException(
                 status_code=400,
                 detail="Limit must be between 1 and 100"
             )
-        
+
         if offset < 0:
             raise HTTPException(
                 status_code=400,
                 detail="Offset must be non-negative"
             )
-        
+
         # Get receipts from database
         receipts = await http_request.app.state.firestore.get_user_receipts(
             user_id=current_user["uid"],
             limit=limit,
             offset=offset
         )
-        
+
         logger.info("Receipt history retrieved", extra={
             "user_id": current_user["uid"],
             "count": len(receipts),
             "limit": limit,
             "offset": offset
         })
-        
+
         return {
             "receipts": [receipt.dict() for receipt in receipts],
             "pagination": {
@@ -429,7 +429,7 @@ async def get_user_receipts(
             },
             "timestamp": datetime.utcnow().isoformat()
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -437,7 +437,7 @@ async def get_user_receipts(
             "user_id": current_user.get("uid", "unknown"),
             "error": str(e)
         })
-        
+
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve receipt history"
@@ -452,7 +452,7 @@ async def get_receipt_details(
 ):
     """
     Get detailed receipt information by ID
-    
+
     Returns complete receipt data including AI insights.
     """
     try:
@@ -460,30 +460,30 @@ async def get_receipt_details(
             "receipt_id": receipt_id,
             "user_id": current_user["uid"]
         })
-        
+
         # Get receipt from database
         receipt = await http_request.app.state.firestore.get_receipt(receipt_id)
-        
+
         if not receipt:
             raise HTTPException(
                 status_code=404,
                 detail="Receipt not found"
             )
-        
+
         # Note: In a real implementation, we'd need to verify the receipt belongs to the user
         # This would require storing user_id in the receipt document
-        
+
         logger.info("Receipt details retrieved", extra={
             "receipt_id": receipt_id,
             "user_id": current_user["uid"],
             "store_name": receipt.store_info.name
         })
-        
+
         return {
             "receipt": receipt.dict(),
             "timestamp": datetime.utcnow().isoformat()
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -492,7 +492,7 @@ async def get_receipt_details(
             "user_id": current_user.get("uid", "unknown"),
             "error": str(e)
         })
-        
+
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve receipt details"

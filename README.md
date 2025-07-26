@@ -1,6 +1,6 @@
 # WalleteriumImperium - AI Receipt Analysis System
 
-**Enhanced Receipt Processing with Gemini 2.5 Flash**  
+**Enhanced Receipt Processing with Gemini 2.5 Flash**
 Dual-mode analysis supporting both images and videos with guaranteed JSON output.
 
 ---
@@ -11,7 +11,7 @@ Dual-mode analysis supporting both images and videos with guaranteed JSON output
 
 - **🤖 Gemini 2.5 Flash AI**: Advanced vision analysis with schema-enforced JSON output
 - **📸 Image Analysis**: Fast processing for clear receipt photos (10-30s)
-- **🎥 Video Analysis**: Multi-frame analysis for challenging conditions (20-60s) 
+- **🎥 Video Analysis**: Multi-frame analysis for challenging conditions (20-60s)
 - **⚡ Real-time API**: Token-based processing with background tasks
 - **🔄 Agentic Intelligence**: Smart retry logic and error recovery
 - **🏭 Production Ready**: FastAPI + Google Cloud + Firestore

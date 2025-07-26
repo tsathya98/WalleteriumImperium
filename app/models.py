@@ -33,7 +33,7 @@ class RecurrenceType(str, Enum):
 class ProcessingStatus(str, Enum):
     """Receipt processing status enumeration"""
     UPLOADED = "uploaded"
-    PROCESSING = "processing" 
+    PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -51,7 +51,7 @@ class SubscriptionDetails(BaseModel):
     name: str = Field(..., description="Subscription service name")
     recurrence: RecurrenceType = Field(..., description="Billing frequency")
     nextDueDate: str = Field(..., description="Next billing date (ISO 8601)")
-    
+
     @field_validator("nextDueDate")
     @classmethod
     def validate_next_due_date(cls, v: str) -> str:
@@ -67,7 +67,7 @@ class WarrantyDetails(BaseModel):
     validUntil: str = Field(..., description="Warranty expiry date (ISO 8601)")
     provider: Optional[str] = Field(None, description="Warranty provider name")
     termsURL: Optional[str] = Field(None, description="Link to warranty terms")
-    
+
     @field_validator("validUntil")
     @classmethod
     def validate_valid_until(cls, v: str) -> str:
@@ -81,28 +81,28 @@ class WarrantyDetails(BaseModel):
 # Main Receipt Analysis Model (MVP Version)
 class ReceiptAnalysis(BaseModel):
     """Main receipt analysis result - MVP structure, will be enhanced later"""
-    
+
     # Core required fields
     place: str = Field(..., description="Store or merchant name where transaction occurred")
     time: str = Field(..., description="Transaction timestamp (ISO 8601)")
     amount: float = Field(..., ge=0, description="Transaction amount (positive)")
     transactionType: TransactionType = Field(..., description="Transaction type")
-    
+
     # Optional fields
     category: Optional[str] = Field(None, description="User-defined category (e.g., 'Dining', 'Groceries')")
     description: Optional[str] = Field(None, description="Free-form notes about the transaction")
     importance: Optional[ImportanceLevel] = Field(None, description="Transaction importance level")
     warranty: Optional[bool] = Field(False, description="Does this purchase include a warranty?")
     recurring: Optional[bool] = Field(False, description="Is this a recurring/subscription payment?")
-    
+
     # Conditional nested objects
     subscription: Optional[SubscriptionDetails] = Field(None, description="Subscription details (when recurring=true)")
     warrantyDetails: Optional[WarrantyDetails] = Field(None, description="Warranty details (when warranty=true)")
-    
+
     # MVP metadata (will be enhanced with AI confidence scores later)
     receipt_id: str = Field(..., description="Unique receipt identifier")
     processing_time: Optional[float] = Field(None, description="Processing time in seconds")
-    
+
     @field_validator("time")
     @classmethod
     def validate_time(cls, v: str) -> str:
@@ -118,14 +118,14 @@ class ReceiptUploadMetadata(BaseModel):
     """Metadata for receipt upload (sent as form field)"""
     user_id: str = Field(..., description="User ID from Firebase Auth")
     metadata: Optional[Dict[str, Any]] = Field(default={}, description="Optional metadata")
-    
+
     @field_validator("user_id")
     @classmethod
     def validate_user_id(cls, v: str) -> str:
         if not v or len(v.strip()) == 0:
             raise ValueError("User ID cannot be empty")
         return v.strip()
-    
+
 
 
 
@@ -158,13 +158,13 @@ class ReceiptStatusResponse(BaseModel):
     token: str = Field(..., description="Processing token")
     status: ProcessingStatus = Field(..., description="Current processing status")
     progress: ProcessingProgress = Field(..., description="Processing progress")
-    
+
     # Result data (only when completed)
     result: Optional[ReceiptAnalysis] = Field(None, description="Processing result")
-    
+
     # Error information (only when failed)
     error: Optional[ErrorDetail] = Field(None, description="Error details")
-    
+
     # Timestamps
     created_at: datetime = Field(..., description="Token creation time")
     updated_at: datetime = Field(..., description="Last update time")
@@ -178,16 +178,16 @@ class TokenData(BaseModel):
     user_id: str = Field(..., description="User ID")
     status: ProcessingStatus = Field(..., description="Processing status")
     progress: ProcessingProgress = Field(..., description="Progress information")
-    
+
     # Result data
     result: Optional[ReceiptAnalysis] = Field(None)
     error: Optional[ErrorDetail] = Field(None)
-    
+
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     expires_at: datetime = Field(..., description="Token expiration time")
-    
+
     # Processing metadata
     retry_count: int = Field(default=0, description="Number of retry attempts")
     processing_start_time: Optional[datetime] = Field(None)
@@ -200,11 +200,11 @@ class HealthCheckResponse(BaseModel):
     status: Literal["healthy", "unhealthy"] = Field(..., description="Overall health status")
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     version: str = Field(default="1.0.0", description="API version")
-    
+
     services: Dict[str, Literal["healthy", "unhealthy", "degraded"]] = Field(
         default={}, description="Individual service health status"
     )
-    
+
     metrics: Dict[str, Any] = Field(default={}, description="Health metrics")
 
 

@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 
 class ReceiptAnalysisSchema:
     """JSON Schema definition for guaranteed structured output from Gemini"""
-    
+
     @staticmethod
     def get_schema() -> Dict[str, Any]:
         """
@@ -58,7 +58,7 @@ class ReceiptAnalysisSchema:
                             "unit_price": {"type": "number", "minimum": 0, "description": "Price per unit"},
                             "total_price": {"type": "number", "minimum": 0, "description": "Total price for this item"},
                             "category": {
-                                "type": "string", 
+                                "type": "string",
                                 "enum": ["food", "beverage", "household", "personal_care", "electronics", "clothing", "pharmacy", "other"],
                                 "description": "Item category"
                             },
@@ -107,7 +107,7 @@ class ReceiptAnalysisSchema:
 
 class VertexAIReceiptService:
     """Enhanced Vertex AI service for receipt analysis using Gemini 2.5 Flash"""
-    
+
     def __init__(self):
         """Initialize the Vertex AI service"""
         self.project_id = settings.GOOGLE_CLOUD_PROJECT_ID
@@ -116,13 +116,13 @@ class VertexAIReceiptService:
         self.max_retries = 3
         self.model = None
         self._initialize_vertex_ai()
-    
+
     def _initialize_vertex_ai(self):
         """Initialize Vertex AI and the Gemini model"""
         try:
             # Initialize Vertex AI
             vertexai.init(project=self.project_id, location=self.location)
-            
+
             # Configure generation settings for structured output
             generation_config = GenerationConfig(
                 temperature=0.1,  # Lower temperature for more consistent output
@@ -133,23 +133,23 @@ class VertexAIReceiptService:
                 response_mime_type="application/json",
                 response_schema=ReceiptAnalysisSchema.get_schema()
             )
-            
+
             # Initialize the model with our schema
             self.model = GenerativeModel(
                 model_name=self.model_name,
                 generation_config=generation_config
             )
-            
+
             logger.info("Vertex AI initialized successfully", extra={
                 "project_id": self.project_id,
                 "location": self.location,
                 "model": self.model_name
             })
-            
+
         except Exception as e:
             logger.error("Failed to initialize Vertex AI", extra={"error": str(e)})
             raise
-    
+
     def _create_optimized_prompt(self, media_type: str) -> str:
         """
         Creates an optimized prompt for receipt analysis
@@ -170,7 +170,7 @@ CRITICAL INSTRUCTIONS:
 
 FALLBACK VALUES FOR MISSING INFORMATION:
 - address: Use "Not provided" if store address not visible
-- phone: Use "Not provided" if phone number not visible  
+- phone: Use "Not provided" if phone number not visible
 - date: Use "Unknown" if transaction date not visible
 - time: Use "Unknown" if transaction time not visible
 - receipt_number: Use "Not provided" if receipt number not visible
@@ -181,7 +181,7 @@ FALLBACK VALUES FOR MISSING INFORMATION:
 
 QUALITY ASSESSMENT:
 - "high" confidence: Text is crisp, all key info clearly visible
-- "medium" confidence: Some blur/shadow but most info readable  
+- "medium" confidence: Some blur/shadow but most info readable
 - "low" confidence: Poor quality, missing key information
 
 ITEM CATEGORIES:
@@ -196,23 +196,23 @@ ITEM CATEGORIES:
 
 Return ONLY valid JSON matching the required schema. No additional text or formatting.
 """
-    
+
     async def analyze_receipt_media(
-        self, 
-        media_base64: str, 
+        self,
+        media_base64: str,
         media_type: str,
         user_id: str,
         retry_count: int = 0
     ) -> Dict[str, Any]:
         """
         Analyze receipt media (image or video) using Gemini 2.5 Flash with guaranteed JSON output
-        
+
         Args:
             media_base64: Base64 encoded receipt image or video
             media_type: Type of media ('image' or 'video')
             user_id: User ID for logging
             retry_count: Current retry attempt number
-            
+
         Returns:
             Structured receipt analysis data
         """
@@ -223,7 +223,7 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                 "media_type": media_type,
                 "media_size_kb": len(media_base64) * 3 / 4 / 1024
             })
-            
+
             # Validate and prepare media
             if media_type == "image":
                 media_data, mime_type = self._prepare_image(media_base64)
@@ -231,28 +231,28 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                 media_data, mime_type = self._prepare_video(media_base64)
             else:
                 raise ValueError(f"Unsupported media type: {media_type}")
-            
+
             # Create the prompt (enhanced for video support)
             prompt = self._create_optimized_prompt(media_type)
-            
+
             # Prepare the content for Gemini
             contents = [
                 prompt,
                 Part.from_data(data=media_data, mime_type=mime_type)
             ]
-            
+
             # Generate content with schema enforcement
             response = await asyncio.to_thread(
-                self.model.generate_content, 
+                self.model.generate_content,
                 contents
             )
-            
+
             if not response.text:
                 raise ValueError("Empty response from Gemini")
-            
+
             # Parse the guaranteed JSON response
             analysis_result = json.loads(response.text)
-            
+
             # Add processing metadata
             analysis_result["processing_metadata"].update({
                 "timestamp": datetime.utcnow().isoformat(),
@@ -260,10 +260,10 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                 "items_count": len(analysis_result.get("items", [])),
                 "retry_count": retry_count
             })
-            
+
             # Validate the result
             self._validate_analysis_result(analysis_result)
-            
+
             logger.info("Receipt analysis completed successfully", extra={
                 "user_id": user_id,
                 "items_extracted": len(analysis_result.get("items", [])),
@@ -271,14 +271,14 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                 "confidence": analysis_result.get("confidence", "unknown"),
                 "retry_count": retry_count
             })
-            
+
             return {
                 "status": "success",
                 "data": analysis_result,
                 "processing_time": None,  # Will be calculated by caller
                 "model_version": self.model_name
             }
-            
+
         except json.JSONDecodeError as e:
             logger.error("JSON parsing failed", extra={
                 "user_id": user_id,
@@ -286,7 +286,7 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                 "error": str(e),
                 "raw_response": response.text if 'response' in locals() else None
             })
-            
+
             if retry_count < self.max_retries:
                 logger.info("Retrying with enhanced prompt", extra={
                     "user_id": user_id,
@@ -294,16 +294,16 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                 })
                 await asyncio.sleep(1)  # Brief delay before retry
                 return await self.analyze_receipt_media(media_base64, media_type, user_id, retry_count + 1)
-            
+
             raise ValueError(f"Failed to get valid JSON after {self.max_retries} retries")
-            
+
         except Exception as e:
             logger.error("Receipt analysis failed", extra={
                 "user_id": user_id,
                 "retry_count": retry_count,
                 "error": str(e)
             })
-            
+
             if retry_count < self.max_retries and "quota" not in str(e).lower():
                 logger.info("Retrying analysis", extra={
                     "user_id": user_id,
@@ -311,28 +311,28 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                 })
                 await asyncio.sleep(2 ** retry_count)  # Exponential backoff
                 return await self.analyze_receipt_media(media_base64, media_type, user_id, retry_count + 1)
-            
-            raise
-    
 
-    
+            raise
+
+
+
     def _prepare_image(self, image_base64: str) -> tuple[bytes, str]:
         """
         Prepare and validate the image for analysis
-        
+
         Args:
             image_base64: Base64 encoded image
-            
+
         Returns:
             Tuple of (image bytes, mime type) ready for Gemini
         """
         try:
             # Decode base64
             image_bytes = base64.b64decode(image_base64)
-            
+
             # Validate and potentially resize image
             image = Image.open(io.BytesIO(image_bytes))
-            
+
             # Resize if too large (Gemini has size limits)
             max_size = (2048, 2048)
             if image.size[0] > max_size[0] or image.size[1] > max_size[1]:
@@ -341,43 +341,43 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                     "max_size": max_size
                 })
                 image.thumbnail(max_size, Image.Resampling.LANCZOS)
-                
+
                 # Convert back to bytes
                 output_buffer = io.BytesIO()
                 image.save(output_buffer, format='JPEG', quality=90, optimize=True)
                 image_bytes = output_buffer.getvalue()
-            
+
             return image_bytes, "image/jpeg"
-            
+
         except Exception as e:
             logger.error("Image preparation failed", extra={"error": str(e)})
             raise ValueError(f"Invalid image data: {str(e)}")
-    
+
     def _prepare_video(self, video_base64: str) -> tuple[bytes, str]:
         """
         Prepare and validate the video for analysis
-        
+
         Args:
             video_base64: Base64 encoded video
-            
+
         Returns:
             Tuple of (video bytes, mime type) ready for Gemini
         """
         try:
             # Decode base64
             video_bytes = base64.b64decode(video_base64)
-            
+
             # Validate video size (larger limit for videos)
             video_size_mb = len(video_bytes) / 1024 / 1024
             max_video_size = 100  # 100MB limit for videos
-            
+
             if video_size_mb > max_video_size:
                 logger.warning("Video too large", extra={
                     "size_mb": video_size_mb,
                     "max_size_mb": max_video_size
                 })
                 raise ValueError(f"Video too large: {video_size_mb:.1f}MB. Maximum size: {max_video_size}MB")
-            
+
             # Determine video format from the first few bytes
             if video_bytes.startswith(b'\x00\x00\x00'):
                 mime_type = "video/mp4"
@@ -388,22 +388,22 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
             else:
                 # Default to mp4 for unknown formats
                 mime_type = "video/mp4"
-            
+
             logger.info("Video prepared for analysis", extra={
                 "size_mb": video_size_mb,
                 "mime_type": mime_type
             })
-            
+
             return video_bytes, mime_type
-            
+
         except Exception as e:
             logger.error("Video preparation failed", extra={"error": str(e)})
             raise ValueError(f"Invalid video data: {str(e)}")
-    
+
     def _validate_analysis_result(self, result: Dict[str, Any]) -> None:
         """
         Validate the analysis result for consistency and correctness
-        
+
         Args:
             result: Analysis result to validate
         """
@@ -413,21 +413,21 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
             for field in required_fields:
                 if field not in result:
                     raise ValueError(f"Missing required field: {field}")
-            
+
             # Validate store info
             if not result["store_info"].get("name"):
                 raise ValueError("Store name is required")
-            
+
             # Validate items
             items = result.get("items", [])
             if not isinstance(items, list):
                 raise ValueError("Items must be an array")
-            
+
             # Validate totals consistency
             totals = result.get("totals", {})
             calculated_total = sum(item.get("total_price", 0) for item in items)
             declared_total = totals.get("total", 0)
-            
+
             # Allow small rounding differences
             if abs(calculated_total - declared_total) > 0.02:
                 logger.warning("Total mismatch detected", extra={
@@ -435,17 +435,17 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                     "declared_total": declared_total,
                     "difference": abs(calculated_total - declared_total)
                 })
-            
+
             logger.debug("Analysis result validation passed")
-            
+
         except Exception as e:
             logger.error("Analysis result validation failed", extra={"error": str(e)})
             raise
-    
+
     async def health_check(self) -> Dict[str, Any]:
         """
         Perform health check on the Vertex AI service
-        
+
         Returns:
             Health status information
         """
@@ -453,7 +453,7 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
             # Test basic connectivity
             if not self.model:
                 return {"status": "unhealthy", "error": "Model not initialized"}
-            
+
             # Test with a simple request (optional)
             return {
                 "status": "healthy",
@@ -462,7 +462,7 @@ Return ONLY valid JSON matching the required schema. No additional text or forma
                 "location": self.location,
                 "timestamp": datetime.utcnow().isoformat()
             }
-            
+
         except Exception as e:
             logger.error("Health check failed", extra={"error": str(e)})
             return {

@@ -163,7 +163,7 @@ With multipart uploads, you simply upload the file directly - no base64 conversi
 - **URL**: `{{base_url}}/health`
 
 #### **2. Upload Image Receipt**
-- **Method**: POST  
+- **Method**: POST
 - **URL**: `{{base_url}}/receipts/upload`
 - **Body Type**: form-data
 - **Form Fields**:
@@ -307,9 +307,9 @@ echo "3. Waiting for results..."
 for i in {1..30}; do
   STATUS_RESPONSE=$(curl -s "http://localhost:8080/api/v1/receipts/status/$TOKEN")
   STATUS=$(echo $STATUS_RESPONSE | jq -r .status)
-  
+
   echo "Attempt $i: $STATUS"
-  
+
   if [ "$STATUS" = "completed" ]; then
     echo "🎉 Analysis completed!"
     echo $STATUS_RESPONSE | jq .result
@@ -319,7 +319,7 @@ for i in {1..30}; do
     echo $STATUS_RESPONSE | jq .error
     break
   fi
-  
+
   sleep 3
 done
 ```
@@ -365,7 +365,7 @@ python scripts/test_video_receipt.py
 
 #### **Using Your Phone**
 1. **Open camera app**
-2. **Switch to video mode** 
+2. **Switch to video mode**
 3. **Record 3-5 seconds** of the receipt
 4. **Transfer to computer**
 5. **Test with script**:
@@ -404,7 +404,7 @@ python scripts/test_video_receipt.py "path/to/your/video.mp4"
     "description": "Restaurant - Peruvian cuisine",
     "time": "2024-01-15T19:30:00Z",
     "transactionType": "expense",
-    "importance": "medium", 
+    "importance": "medium",
     "recurring": false,
     "warranty": false
   }
@@ -507,7 +507,7 @@ LOGGING_LEVEL=DEBUG python -m uvicorn main:app --host 0.0.0.0 --port 8080 --relo
 
 ### **Basic API Testing**
 - [ ] Image upload with valid payload succeeds
-- [ ] Video upload with valid payload succeeds  
+- [ ] Video upload with valid payload succeeds
 - [ ] Invalid media_type is rejected (422 error)
 - [ ] Missing required fields are rejected (422 error)
 - [ ] Status endpoint returns processing progress
@@ -543,7 +543,7 @@ You now have a **comprehensive testing framework** for your WalleteriumImperium 
 
 ### **✅ Multiple Testing Methods**
 - **CLI Scripts**: Real-world testing with your files
-- **Browser UI**: Interactive API exploration  
+- **Browser UI**: Interactive API exploration
 - **Postman**: Professional API testing
 - **cURL**: Automated/scripted testing
 
@@ -553,4 +553,4 @@ You now have a **comprehensive testing framework** for your WalleteriumImperium 
 - **Detailed logging**: Full traceability
 - **Performance monitoring**: Benchmarks and metrics
 
-**Start testing with your receipt and explore the power of Gemini 2.5 Flash! 🇵🇪🍽️📸🎥** 
+**Start testing with your receipt and explore the power of Gemini 2.5 Flash! 🇵🇪🍽️📸🎥**

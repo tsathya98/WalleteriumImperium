@@ -6,7 +6,7 @@
         "condition": {"age": 30, "matchesStorageClass": ["STANDARD"]}
       },
       {
-        "action": {"type": "SetStorageClass", "storageClass": "COLDLINE"}, 
+        "action": {"type": "SetStorageClass", "storageClass": "COLDLINE"},
         "condition": {"age": 90, "matchesStorageClass": ["NEARLINE"]}
       },
       {

@@ -23,11 +23,11 @@ def get_weather(city: str) -> dict:
         # Note: In production, you should use a real API key from OpenWeatherMap
         # For demo purposes, we'll return simulated data based on common cities
         # To use real data, sign up at https://openweathermap.org/api
-        
+
         # Simulate weather data for demonstration
         weather_data = {
             "new york": "sunny, 25°C (77°F)",
-            "london": "cloudy, 15°C (59°F)", 
+            "london": "cloudy, 15°C (59°F)",
             "tokyo": "partly cloudy, 22°C (72°F)",
             "paris": "rainy, 18°C (64°F)",
             "sydney": "sunny, 28°C (82°F)",
@@ -37,7 +37,7 @@ def get_weather(city: str) -> dict:
             "beijing": "foggy, 20°C (68°F)",
             "los angeles": "sunny, 24°C (75°F)"
         }
-        
+
         city_lower = city.lower()
         if city_lower in weather_data:
             return {
@@ -47,7 +47,7 @@ def get_weather(city: str) -> dict:
         else:
             # For unknown cities, provide a generic response
             return {
-                "status": "success", 
+                "status": "success",
                 "report": f"Weather information for '{city}' is not available in the demo. "
                          f"To get real-time weather data, integrate with OpenWeatherMap API using your API key."
             }
@@ -75,26 +75,26 @@ def get_current_time(city: str) -> dict:
                 "status": "error",
                 "error_message": f"Could not find location data for '{city}'. Please check the city name."
             }
-        
+
         # Get timezone for the coordinates
         timezone_str = tf.timezone_at(lat=location.latitude, lng=location.longitude)
         if not timezone_str:
             return {
-                "status": "error", 
+                "status": "error",
                 "error_message": f"Could not determine timezone for '{city}'."
             }
-        
+
         # Get current time in that timezone
         tz = ZoneInfo(timezone_str)
         now = datetime.datetime.now(tz)
-        
+
         report = (
             f'The current time in {city} is {now.strftime("%Y-%m-%d %H:%M:%S %Z%z")} '
             f'(Timezone: {timezone_str})'
         )
-        
+
         return {"status": "success", "report": report}
-        
+
     except Exception as e:
         return {
             "status": "error",

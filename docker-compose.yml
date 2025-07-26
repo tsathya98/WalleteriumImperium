@@ -39,8 +39,8 @@ services:
     volumes:
       - firestore_data:/var/lib/firestore
     command: >
-      sh -c "gcloud emulators firestore start 
-             --host-port=0.0.0.0:8080 
+      sh -c "gcloud emulators firestore start
+             --host-port=0.0.0.0:8080
              --rules=/dev/null"
     restart: unless-stopped
     healthcheck:

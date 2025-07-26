@@ -32,18 +32,18 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan management"""
     logger.info("🚀 Starting Raseed Receipt Processor")
-    
+
     # Initialize services
     try:
         # Initialize Firestore service
         firestore_service = FirestoreService()
         await firestore_service.initialize()
         app.state.firestore = firestore_service
-        
+
         # Initialize vertex AI service
         vertex_ai_service = get_vertex_ai_service()
         app.state.vertex_ai = vertex_ai_service
-        
+
         # Initialize token service with proper dependencies
         token_service_instance = TokenService(
             firestore_service=firestore_service,
@@ -51,17 +51,17 @@ async def lifespan(app: FastAPI):
         )
         await token_service_instance.initialize()
         app.state.token_service = token_service_instance
-        
+
         metrics_collector = MetricsCollector()
         app.state.metrics = metrics_collector
-        
+
         logger.info("✅ All services initialized successfully")
     except Exception as e:
         logger.error(f"❌ Failed to initialize services: {e}")
         sys.exit(1)
-    
+
     yield
-    
+
     # Cleanup on shutdown
     logger.info("🛑 Shutting down Raseed Receipt Processor")
 
@@ -89,23 +89,23 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
     """Log all incoming requests"""
     start_time = datetime.utcnow()
-    
+
     # Process request
     response = await call_next(request)
-    
+
     # Calculate processing time
     process_time = (datetime.utcnow() - start_time).total_seconds()
-    
+
     # Log request details
     logger.info(
         f"{request.method} {request.url.path} - "
         f"Status: {response.status_code} - "
         f"Time: {process_time:.3f}s"
     )
-    
+
     # Add processing time header
     response.headers["X-Process-Time"] = str(process_time)
-    
+
     return response
 
 # Global exception handler
@@ -113,7 +113,7 @@ async def log_requests(request: Request, call_next):
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler for unhandled errors"""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    
+
     return JSONResponse(
         status_code=500,
         content={
@@ -152,7 +152,7 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     # Development server configuration
     uvicorn.run(
         "main:app",
