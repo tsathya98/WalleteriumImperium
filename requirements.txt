@@ -1,6 +1,32 @@
-google-adk>=0.1.0
-google-generativeai>=0.8.0
-Pillow>=10.0.0
-requests>=2.31.0
-opencv-python>=4.8.0
-typing-extensions>=4.7.0 
+# Project Raseed - FastAPI Backend Dependencies
+
+# Core FastAPI and web framework
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+
+# Google Cloud services
+google-cloud-firestore
+google-cloud-aiplatform
+google-auth
+google-generativeai
+
+# HTTP and async support
+httpx
+aiohttp
+requests
+
+# Image processing
+Pillow
+opencv-python
+
+# Utilities
+typing-extensions
+python-multipart
+python-dotenv
+
+# Development and testing
+pytest
+pytest-asyncio
+psutil

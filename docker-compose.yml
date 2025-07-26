@@ -1,0 +1,104 @@
+version: '3.8'
+services:
+  # FastAPI Backend
+  raseed-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=development
+      - USE_EMULATORS=true
+      - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
+      - VERTEX_AI_MOCK_HOST=vertex-ai-mock:8090
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - .:/app
+      - /app/.venv  # Exclude virtual environment
+    depends_on:
+      - firestore-emulator
+      - vertex-ai-mock
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+
+  # Firestore Emulator
+  firestore-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
+    ports:
+      - "8080:8080"  # Firestore
+      - "4000:4000"  # UI
+    environment:
+      - CLOUDSDK_CORE_PROJECT=raseed-dev
+    volumes:
+      - firestore_data:/var/lib/firestore
+    command: >
+      sh -c "gcloud emulators firestore start 
+             --host-port=0.0.0.0:8080 
+             --rules=/dev/null"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Mock Vertex AI Service
+  vertex-ai-mock:
+    build:
+      context: ./dev-tools/vertex-ai-mock
+      dockerfile: Dockerfile
+    ports:
+      - "8090:8090"
+    environment:
+      - MOCK_RESPONSE_DELAY=3000
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Test Web Interface
+  test-interface:
+    build:
+      context: ./dev-tools/test-interface
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - raseed-backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080
+    restart: unless-stopped
+
+  # Redis Cache (optional, for production-like testing)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  firestore_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: raseed-network

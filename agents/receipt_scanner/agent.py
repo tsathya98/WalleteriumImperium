@@ -6,7 +6,9 @@ from pathlib import Path
 import io
 from PIL import Image
 from google.adk.agents import Agent
-
+# Import Google Generative AI for Gemini vision capabilities
+import google.generativeai as genai
+import os
 
 def analyze_receipt() -> dict:
     """Analyzes the uploaded receipt image to extract items and pricing information.
@@ -48,10 +50,6 @@ def process_receipt_image(image_data: str, image_format: str = "base64") -> dict
         dict: Structured receipt data in MCP format with status, items, pricing, and metadata.
     """
     try:
-        # Import Google Generative AI for Gemini vision capabilities
-        import google.generativeai as genai
-        import os
-
         # Configure Gemini API (you'll need to set GOOGLE_API_KEY environment variable)
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
