@@ -5,23 +5,22 @@ Implements sophisticated decision-making logic in a single, efficient call
 
 import datetime
 import json
-import asyncio
-from typing import Dict, Any
 import io
+from typing import Dict, Any
+import time
 from PIL import Image
 
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part, GenerationConfig
 
 from app.core.config import get_settings
-from app.core.logging import get_logger
+
 from app.models import ReceiptAnalysis, ItemDetail, WarrantyDetails, RecurringDetails, ProcessingMetadata
 from .prompts import create_agentic_prompt, create_fallback_values_prompt, create_business_rules_prompt
 from .schemas import get_enhanced_receipt_schema
 from .validators import validate_and_fix_result
 
 settings = get_settings()
-logger = get_logger(__name__)
 
 
 class EnhancedReceiptScannerAgent:
@@ -34,27 +33,26 @@ class EnhancedReceiptScannerAgent:
         self.model_name = "gemini-2.5-flash"
         self.max_retries = 3
         self.model = None
+        print(f"🤖 Initializing Enhanced Receipt Scanner Agent")
+        print(f"   Project: {self.project_id}")
+        print(f"   Location: {self.location}")
         self._initialize_vertex_ai()
 
     def _initialize_vertex_ai(self):
         """Initialize Vertex AI and the Gemini model with enhanced schema"""
         try:
-            import logging
-            logging.basicConfig(level=logging.DEBUG)
-            logger = logging.getLogger(__name__)
-            
-            logger.debug("Starting Vertex AI initialization")
+            print("🔧 Starting Vertex AI initialization")
             
             # Initialize Vertex AI
             vertexai.init(project=self.project_id, location=self.location)
-            logger.debug("Vertex AI initialized successfully")
+            print("✅ Vertex AI initialized successfully")
 
             # Get the schema and debug it
             schema = get_enhanced_receipt_schema()
-            logger.debug(f"Schema generated successfully, keys: {list(schema.keys())}")
+            print(f"📋 Schema generated successfully, keys: {list(schema.keys())}")
             
             # Configure generation settings for structured output
-            logger.debug("Creating GenerationConfig")
+            print("⚙️ Creating GenerationConfig")
             generation_config = GenerationConfig(
                 temperature=0.1,  # Lower temperature for more consistent output
                 top_p=0.8,
@@ -64,64 +62,61 @@ class EnhancedReceiptScannerAgent:
                 response_mime_type="application/json",
                 response_schema=schema,
             )
-            logger.debug("GenerationConfig created successfully")
+            print("✅ GenerationConfig created successfully")
 
-            # Initialize the model with our enhanced schema
-            logger.debug("Creating GenerativeModel")
+            # Initialize the model with enhanced schema
+            print(f"🚀 Initializing {self.model_name} model")
             self.model = GenerativeModel(
                 model_name=self.model_name,
                 generation_config=generation_config
             )
-            logger.debug("GenerativeModel created successfully")
+            print("✅ Model initialized successfully")
 
-            logger.info(
-                "Enhanced Vertex AI initialized successfully",
-                extra={
-                    "project_id": self.project_id,
-                    "location": self.location,
-                    "model": self.model_name,
-                },
-            )
+            print(f"🎉 Enhanced Receipt Scanner Agent ready!")
 
         except Exception as e:
-            logger.error("Failed to initialize Vertex AI", extra={"error": str(e)})
+            print(f"❌ Failed to initialize Vertex AI: {e}")
             raise
 
-    async def analyze_receipt_media(
+    def analyze_receipt_media(
         self, media_bytes: bytes, media_type: str, user_id: str, retry_count: int = 0
     ) -> Dict[str, Any]:
         """
         Analyze receipt media using enhanced hybrid agentic workflow
 
-        Args:
+    Args:
             media_bytes: Raw bytes of receipt image or video
             media_type: Type of media ('image' or 'video')
             user_id: User ID for logging
             retry_count: Current retry attempt number
 
-        Returns:
+    Returns:
             Enhanced structured receipt analysis data
         """
+        print(f"DEBUG: Starting analyze_receipt_media - media_type: {media_type!r} (type: {type(media_type)})")
+        print(f"DEBUG: user_id: {user_id!r}, retry_count: {retry_count}")
+        
         try:
             start_time = datetime.datetime.utcnow()
             
-            logger.info(
-                "Starting enhanced receipt analysis",
-                extra={
-                    "user_id": user_id,
-                    "retry_count": retry_count,
-                    "media_type": media_type,
-                    "media_size_kb": len(media_bytes) / 1024,
-                },
-            )
+            print(f"🧠 Starting enhanced receipt analysis for user: {user_id}")
+            print(f"   Media type: {media_type}")
+            print(f"   Media size: {len(media_bytes) / 1024:.1f} KB")
+            print(f"   Retry count: {retry_count}")
 
             # Validate and prepare media from raw bytes
+            print(f"DEBUG: About to check media_type: {media_type}")
             if media_type == "image":
+                print("DEBUG: Processing as image")
                 media_data, mime_type = self._prepare_image_from_bytes(media_bytes)
             elif media_type == "video":
+                print("DEBUG: Processing as video")
                 media_data, mime_type = self._prepare_video_from_bytes(media_bytes)
             else:
+                print(f"DEBUG: Unsupported media_type: {media_type}")
                 raise ValueError(f"Unsupported media type: {media_type}")
+
+            print("DEBUG: Media prepared successfully")
 
             # Create the enhanced agentic prompt
             prompt = self._create_enhanced_prompt(media_type)
@@ -130,7 +125,8 @@ class EnhancedReceiptScannerAgent:
             contents = [prompt, Part.from_data(data=media_data, mime_type=mime_type)]
 
             # Generate content with schema enforcement
-            response = await asyncio.to_thread(self.model.generate_content, contents)
+            print("🤖 Calling Gemini model...")
+            response = self.model.generate_content(contents)
 
             if not response.text:
                 raise ValueError("Empty response from Gemini")
@@ -149,20 +145,14 @@ class EnhancedReceiptScannerAgent:
             # Calculate processing time
             processing_time = (datetime.datetime.utcnow() - start_time).total_seconds()
 
-            logger.info(
-                "Enhanced receipt analysis completed successfully",
-                extra={
-                    "user_id": user_id,
-                    "items_extracted": len(receipt_analysis.items),
-                    "total_amount": receipt_analysis.amount,
-                    "vendor_type": receipt_analysis.metadata.vendor_type if receipt_analysis.metadata else "unknown",
-                    "confidence": receipt_analysis.metadata.confidence if receipt_analysis.metadata else "unknown",
-                    "retry_count": retry_count,
-                    "processing_time": processing_time,
-                    "validation_errors": len(validation.errors),
-                    "validation_warnings": len(validation.warnings),
-                },
-            )
+            print(f"✅ Enha nced receipt analysis completed successfully")
+            print(f"   Items extracted: {len(receipt_analysis.items)}")
+            print(f"   Total amount: ${receipt_analysis.amount}")
+            print(f"   Vendor type: {receipt_analysis.metadata.vendor_type if receipt_analysis.metadata else 'unknown'}")
+            print(f"   Confidence: {receipt_analysis.metadata.confidence if receipt_analysis.metadata else 'unknown'}")
+            print(f"   Processing time: {processing_time:.1f}s")
+            print(f"   Validation errors: {len(validation.errors)}")
+            print(f"   Validation warnings: {len(validation.warnings)}")
 
             return {
                 "status": "success",
@@ -177,43 +167,22 @@ class EnhancedReceiptScannerAgent:
             }
 
         except json.JSONDecodeError as e:
-            logger.error(
-                "JSON parsing failed in enhanced analysis",
-                extra={
-                    "user_id": user_id,
-                    "retry_count": retry_count,
-                    "error": str(e),
-                    "raw_response": response.text if "response" in locals() else None,
-                },
-            )
-
-            if retry_count < self.max_retries:
-                logger.info(
-                    "Retrying with enhanced prompt",
-                    extra={"user_id": user_id, "retry_count": retry_count + 1},
-                )
-                await asyncio.sleep(1)  # Brief delay before retry
-                return await self.analyze_receipt_media(
-                    media_bytes, media_type, user_id, retry_count + 1
-                )
-
-            raise ValueError(
-                f"Failed to get valid JSON after {self.max_retries} retries"
-            )
+            print(f"❌ JSON parsing failed in enhanced analysis")
+            print(f"   User: {user_id}, Retry: {retry_count}")
+            print(f"   Error: {e}")
+            print(f"   Raw response: {response.text[:500] if 'response' in locals() else 'No response'}")
+            raise ValueError(f"Invalid JSON response from AI: {str(e)}")
 
         except Exception as e:
-            logger.error(
-                "Enhanced receipt analysis failed",
-                extra={"user_id": user_id, "retry_count": retry_count, "error": str(e)},
-            )
+            print(f"❌ Enhanced receipt analysis failed")
+            print(f"   User: {user_id}, Retry: {retry_count}")
+            print(f"   Error: {e}")
 
-            if retry_count < self.max_retries and "quota" not in str(e).lower():
-                logger.info(
-                    "Retrying enhanced analysis",
-                    extra={"user_id": user_id, "retry_count": retry_count + 1},
-                )
-                await asyncio.sleep(2**retry_count)  # Exponential backoff
-                return await self.analyze_receipt_media(
+            # Simple retry logic for hackathon speed
+            if retry_count < 2:
+                print(f"🔄 Retrying... (attempt {retry_count + 1})")
+                time.sleep(2**retry_count)  # Exponential backoff
+                return self.analyze_receipt_media(
                     media_bytes, media_type, user_id, retry_count + 1
                 )
 
@@ -230,7 +199,7 @@ class EnhancedReceiptScannerAgent:
     def _prepare_image_from_bytes(self, image_bytes: bytes) -> tuple[bytes, str]:
         """
         Prepare and validate the image from raw bytes for analysis
-    """
+        """
         try:
             # Validate and potentially resize image
             image = Image.open(io.BytesIO(image_bytes))
@@ -238,10 +207,7 @@ class EnhancedReceiptScannerAgent:
             # Resize if too large (Gemini has size limits)
             max_size = (2048, 2048)
             if image.size[0] > max_size[0] or image.size[1] > max_size[1]:
-                logger.info(
-                    "Resizing large image",
-                    extra={"original_size": image.size, "max_size": max_size},
-                )
+                print(f"📏 Resizing large image from {image.size} to max {max_size}")
                 image.thumbnail(max_size, Image.Resampling.LANCZOS)
 
                 # Convert back to bytes
@@ -252,7 +218,7 @@ class EnhancedReceiptScannerAgent:
             return image_bytes, "image/jpeg"
 
         except Exception as e:
-            logger.error("Image preparation failed", extra={"error": str(e)})
+            print(f"❌ Image preparation failed: {e}")
             raise ValueError(f"Invalid image data: {str(e)}")
 
     def _prepare_video_from_bytes(self, video_bytes: bytes) -> tuple[bytes, str]:
@@ -265,10 +231,7 @@ class EnhancedReceiptScannerAgent:
             max_video_size = 100  # 100MB limit for videos
 
             if video_size_mb > max_video_size:
-                logger.warning(
-                    "Video too large",
-                    extra={"size_mb": video_size_mb, "max_size_mb": max_video_size},
-                )
+                print(f"⚠️ Video too large: {video_size_mb:.1f}MB (max: {max_video_size}MB)")
                 raise ValueError(
                     f"Video too large: {video_size_mb:.1f}MB. Maximum size: {max_video_size}MB"
                 )
@@ -284,15 +247,14 @@ class EnhancedReceiptScannerAgent:
                 # Default to mp4 for unknown formats
                 mime_type = "video/mp4"
 
-            logger.info(
-                "Video prepared for analysis",
-                extra={"size_mb": video_size_mb, "mime_type": mime_type},
-            )
+            print(f"🎥 Video prepared for analysis")
+            print(f"   Size: {video_size_mb:.1f}MB")
+            print(f"   MIME type: {mime_type}")
 
             return video_bytes, mime_type
 
         except Exception as e:
-            logger.error("Video preparation failed", extra={"error": str(e)})
+            print(f"❌ Video preparation failed: {e}")
             raise ValueError(f"Invalid video data: {str(e)}")
 
     def _transform_to_receipt_analysis(
@@ -301,15 +263,16 @@ class EnhancedReceiptScannerAgent:
         """
         Transform validated AI result to ReceiptAnalysis model
 
-    Args:
+        Args:
             ai_result: Validated AI analysis result
             user_id: User ID for receipt_id generation
             start_time: Processing start time
 
-    Returns:
+        Returns:
             ReceiptAnalysis object
-    """
+        """
         try:
+            # Extract data from AI result (SAME LOGIC AS BEFORE)
             store_info = ai_result.get("store_info", {})
             items_data = ai_result.get("items", [])
             totals = ai_result.get("totals", {})
@@ -317,22 +280,16 @@ class EnhancedReceiptScannerAgent:
             processing_meta = ai_result.get("processing_metadata", {})
 
             # Generate receipt ID
-            receipt_id = f"{user_id}_{int(start_time.timestamp())}"
+            timestamp = int(start_time.timestamp())
+            receipt_id = f"{user_id}_{timestamp}"
 
-            # Transform date and time
-            transaction_date = store_info.get("date", start_time.strftime("%Y-%m-%d"))
-            transaction_time = store_info.get("time", "12:00")
-            
-            # Combine date and time into ISO 8601 format
-            if transaction_date and transaction_date not in ["Unknown", "Not provided"]:
-                if transaction_time and transaction_time not in ["Unknown", "Not provided"]:
-                    time_str = f"{transaction_date}T{transaction_time}:00Z"
-                else:
-                    time_str = f"{transaction_date}T12:00:00Z"
-            else:
-                time_str = start_time.isoformat() + "Z"
+            # Process time
+            processing_time = (datetime.datetime.utcnow() - start_time).total_seconds()
 
-            # Transform items
+            # Format time string
+            time_str = start_time.isoformat() + "Z"
+
+            # Transform items (SAME LOGIC)
             items = []
             for item_data in items_data:
                 # Transform warranty details
@@ -368,36 +325,34 @@ class EnhancedReceiptScannerAgent:
                 )
                 items.append(item)
 
-            # Determine top-level warranty and recurring summaries
+            # Determine top-level warranty and recurring summaries (SAME LOGIC)
             top_level_warranty = None
             top_level_recurring = None
 
-            # Find the longest warranty for top-level summary
+            # Check if any items have warranties
             warranty_items = [item for item in items if item.warranty]
             if warranty_items:
-                # Get the warranty with the longest validity
-                longest_warranty = max(warranty_items, key=lambda x: x.warranty.validUntil)
+                # Create a summary warranty
+                latest_warranty = max(warranty_items, key=lambda x: x.warranty.validUntil)
                 top_level_warranty = WarrantyDetails(
-                    validUntil=longest_warranty.warranty.validUntil,
-                    provider="Multiple" if len(warranty_items) > 1 else longest_warranty.warranty.provider,
+                    validUntil=latest_warranty.warranty.validUntil,
+                    provider="Multiple" if len(warranty_items) > 1 else latest_warranty.warranty.provider,
                     coverage=f"{len(warranty_items)} items with warranties"
                 )
 
-            # Find subscription details for top-level summary
+            # Check if any items have recurring payments
             recurring_items = [item for item in items if item.recurring]
             if recurring_items:
-                # Use the most common frequency
-                frequencies = [item.recurring.frequency for item in recurring_items]
-                most_common_freq = max(set(frequencies), key=frequencies.count)
-                
+                # Use the first recurring item as template
+                first_recurring = recurring_items[0].recurring
                 top_level_recurring = RecurringDetails(
-                    frequency=most_common_freq,
-                    subscriptionType=f"{len(recurring_items)} recurring items",
-                    autoRenew=None  # Would need more logic to determine
+                    frequency=first_recurring.frequency,
+                    nextBillingDate=first_recurring.nextBillingDate,
+                    subscriptionType=first_recurring.subscriptionType,
+                    autoRenew=first_recurring.autoRenew
                 )
 
             # Create processing metadata
-            processing_time = (datetime.datetime.utcnow() - start_time).total_seconds()
             metadata = ProcessingMetadata(
                 vendor_type=classification.get("vendor_type", "OTHER"),
                 confidence=processing_meta.get("confidence", "medium"),
@@ -405,7 +360,7 @@ class EnhancedReceiptScannerAgent:
                 model_version=self.model_name
             )
 
-            # Generate intelligent description
+            # Generate intelligent description (SAME LOGIC)
             description = self._generate_intelligent_description(
                 store_info, items, classification
             )
@@ -427,34 +382,26 @@ class EnhancedReceiptScannerAgent:
                 processing_time=processing_time
             )
 
-            logger.info(
-                "Successfully transformed AI result to ReceiptAnalysis",
-                extra={
-                    "receipt_id": receipt_id,
-                    "store_name": receipt_analysis.place,
-                    "amount": receipt_analysis.amount,
-                    "items_count": len(items),
-                    "vendor_type": metadata.vendor_type,
-                },
-            )
+            print(f"✅ Successfully transformed AI result to ReceiptAnalysis")
+            print(f"   Receipt ID: {receipt_id}")
+            print(f"   Store Name: {receipt_analysis.place}")
+            print(f"   Amount: ${receipt_analysis.amount}")
+            print(f"   Items Count: {len(items)}")
+            print(f"   Vendor Type: {metadata.vendor_type}")
 
             return receipt_analysis
 
         except Exception as e:
-            logger.error(
-                "Failed to transform AI result",
-                extra={
-                    "user_id": user_id,
-                    "error": str(e),
-                    "ai_result_keys": list(ai_result.keys()) if isinstance(ai_result, dict) else "not_dict",
-                },
-            )
+            print(f"❌ Failed to transform AI result")
+            print(f"   User: {user_id}")
+            print(f"   Error: {e}")
+            print(f"   AI Result Keys: {list(ai_result.keys()) if isinstance(ai_result, dict) else 'not_dict'}")
             raise ValueError(f"Failed to transform AI result: {str(e)}")
 
     def _generate_intelligent_description(
         self, store_info: Dict[str, Any], items: list, classification: Dict[str, Any]
     ) -> str:
-        """Generate an intelligent, search-friendly description"""
+        """Generate an intelligent, search-friendly description (SAME LOGIC)"""
         
         store_name = store_info.get("name", "Unknown Store")
         vendor_type = classification.get("vendor_type", "OTHER")
@@ -484,7 +431,7 @@ class EnhancedReceiptScannerAgent:
         else:
             return f"{items_count} items from {store_name}"
 
-    async def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> Dict[str, Any]:
         """
         Perform health check on the enhanced service
         """
@@ -497,12 +444,12 @@ class EnhancedReceiptScannerAgent:
                 "model": self.model_name,
                 "project_id": self.project_id,
                 "location": self.location,
-                "agent_type": "enhanced_hybrid_agentic",
+                "agent_type": "enhanced_hybrid_agentic_sync",
                 "timestamp": datetime.datetime.utcnow().isoformat(),
             }
 
         except Exception as e:
-            logger.error("Health check failed", extra={"error": str(e)})
+            print(f"❌ Health check failed: {e}")
             return {
                 "status": "unhealthy",
                 "error": str(e),

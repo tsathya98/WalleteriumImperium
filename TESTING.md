@@ -394,13 +394,13 @@ echo "Supermarket Token: $MARKET_TOKEN"
 echo "4. Monitoring Enhanced Processing..."
 for TOKEN in $RESTAURANT_TOKEN $MARKET_TOKEN; do
   echo "Monitoring $TOKEN..."
-  for i in {1..30}; do
-    STATUS_RESPONSE=$(curl -s "http://localhost:8080/api/v1/receipts/status/$TOKEN")
-    STATUS=$(echo $STATUS_RESPONSE | jq -r .status)
-    
+for i in {1..30}; do
+  STATUS_RESPONSE=$(curl -s "http://localhost:8080/api/v1/receipts/status/$TOKEN")
+  STATUS=$(echo $STATUS_RESPONSE | jq -r .status)
+
     echo "  Attempt $i: $STATUS"
-    
-    if [ "$STATUS" = "completed" ]; then
+
+  if [ "$STATUS" = "completed" ]; then
       echo "  ✅ Analysis completed!"
       
       # Validate enhanced output
@@ -419,15 +419,15 @@ for TOKEN in $RESTAURANT_TOKEN $MARKET_TOKEN; do
         echo "  🛡️  Warranty Detected: $WARRANTY"
       fi
       
-      break
-    elif [ "$STATUS" = "failed" ]; then
+    break
+  elif [ "$STATUS" = "failed" ]; then
       echo "  ❌ Analysis failed!"
-      echo $STATUS_RESPONSE | jq .error
-      break
-    fi
-    
-    sleep 3
-  done
+    echo $STATUS_RESPONSE | jq .error
+    break
+  fi
+
+  sleep 3
+done
 done
 
 echo "🎉 Enhanced testing completed!"
