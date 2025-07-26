@@ -12,8 +12,8 @@ from typing import Optional
 from app.core.config import get_settings
 from app.core.logging import get_logger, log_async_performance
 from app.models import (
-    ReceiptUploadRequest, ReceiptUploadResponse, 
-    ReceiptStatusRequest, ReceiptStatusResponse,
+    ReceiptUploadRequest, ReceiptUploadResponse,
+    ReceiptStatusResponse,
     ProcessingStatus, ProcessingProgress, ProcessingStage,
     ValidationError, APIError
 )

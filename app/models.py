@@ -3,7 +3,7 @@ Pydantic data models for Project Raseed
 MVP: Simple receipt analysis structure, will be enhanced with AI features later
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
 from enum import Enum
@@ -52,8 +52,9 @@ class SubscriptionDetails(BaseModel):
     recurrence: RecurrenceType = Field(..., description="Billing frequency")
     nextDueDate: str = Field(..., description="Next billing date (ISO 8601)")
     
-    @validator("nextDueDate")
-    def validate_next_due_date(cls, v):
+    @field_validator("nextDueDate")
+    @classmethod
+    def validate_next_due_date(cls, v: str) -> str:
         try:
             datetime.fromisoformat(v.replace('Z', '+00:00'))
             return v
@@ -67,8 +68,9 @@ class WarrantyDetails(BaseModel):
     provider: Optional[str] = Field(None, description="Warranty provider name")
     termsURL: Optional[str] = Field(None, description="Link to warranty terms")
     
-    @validator("validUntil")
-    def validate_valid_until(cls, v):
+    @field_validator("validUntil")
+    @classmethod
+    def validate_valid_until(cls, v: str) -> str:
         try:
             datetime.fromisoformat(v.replace('Z', '+00:00'))
             return v
@@ -101,8 +103,9 @@ class ReceiptAnalysis(BaseModel):
     receipt_id: str = Field(..., description="Unique receipt identifier")
     processing_time: Optional[float] = Field(None, description="Processing time in seconds")
     
-    @validator("time")
-    def validate_time(cls, v):
+    @field_validator("time")
+    @classmethod
+    def validate_time(cls, v: str) -> str:
         try:
             datetime.fromisoformat(v.replace('Z', '+00:00'))
             return v
@@ -117,8 +120,9 @@ class ReceiptUploadRequest(BaseModel):
     user_id: str = Field(..., description="User ID from Firebase Auth")
     metadata: Optional[Dict[str, Any]] = Field(default={}, description="Optional metadata")
     
-    @validator("image_base64")
-    def validate_image_base64(cls, v):
+    @field_validator("image_base64")
+    @classmethod
+    def validate_image_base64(cls, v: str) -> str:
         try:
             import base64
             base64.b64decode(v, validate=True)
@@ -126,8 +130,9 @@ class ReceiptUploadRequest(BaseModel):
         except Exception:
             raise ValueError("Invalid base64 image data")
     
-    @validator("user_id")
-    def validate_user_id(cls, v):
+    @field_validator("user_id")
+    @classmethod
+    def validate_user_id(cls, v: str) -> str:
         if not v or len(v.strip()) == 0:
             raise ValueError("User ID cannot be empty")
         return v.strip()
