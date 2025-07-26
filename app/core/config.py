@@ -67,7 +67,25 @@ class Settings(BaseSettings):
     @field_validator("LOG_LEVEL")
     @classmethod
     def validate_log_level(cls, v: str) -> str:
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+        logger = logging.getLogger(__name__)
+        
+        # Debug logging to identify the issue
+        logger.debug(f"LOG_LEVEL validator received: {v!r} (type: {type(v)})")
+        
         allowed = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        
+        # Handle case where v might be a list
+        if isinstance(v, list):
+            logger.error(f"LOG_LEVEL is a list: {v}. Taking first element.")
+            v = v[0] if v else "INFO"
+        
+        # Ensure v is a string
+        if not isinstance(v, str):
+            logger.error(f"LOG_LEVEL is not a string: {v} (type: {type(v)}). Converting to string.")
+            v = str(v)
+        
         if v.upper() not in allowed:
             raise ValueError(f"LOG_LEVEL must be one of {allowed}")
         return v.upper()

@@ -14,6 +14,16 @@ def get_enhanced_receipt_schema() -> Dict[str, Any]:
     Returns:
         JSON schema dictionary for Gemini's response_schema parameter
     """
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+    
+    # Debug logging to identify the issue
+    logger.debug(f"TRANSACTION_CATEGORIES type: {type(TRANSACTION_CATEGORIES)}")
+    logger.debug(f"TRANSACTION_CATEGORIES value: {TRANSACTION_CATEGORIES}")
+    logger.debug(f"VENDOR_TYPES.keys() type: {type(list(VENDOR_TYPES.keys()))}")
+    logger.debug(f"VENDOR_TYPES.keys() value: {list(VENDOR_TYPES.keys())}")
+    
     return {
         "type": "object",
         "required": [
@@ -82,7 +92,7 @@ def get_enhanced_receipt_schema() -> Dict[str, Any]:
                         },
                         "category": {
                             "type": "string",
-                            "enum": TRANSACTION_CATEGORIES,
+                            "enum": [str(cat) for cat in TRANSACTION_CATEGORIES],
                             "description": "Item category from predefined list"
                         },
                         "description": {
@@ -160,7 +170,7 @@ def get_enhanced_receipt_schema() -> Dict[str, Any]:
                     },
                     "payment_method": {
                         "type": ["string", "null"],
-                        "enum": ["cash", "card", "mobile", "other", "unknown", None],
+                        "enum": ["cash", "card", "mobile", "other", "unknown", "null"],
                         "description": "Payment method if visible"
                     }
                 }
@@ -171,12 +181,12 @@ def get_enhanced_receipt_schema() -> Dict[str, Any]:
                 "properties": {
                     "vendor_type": {
                         "type": "string",
-                        "enum": list(VENDOR_TYPES.keys()),
+                        "enum": [str(key) for key in VENDOR_TYPES.keys()],
                         "description": "AI-classified vendor type"
                     },
                     "overall_category": {
                         "type": "string",
-                        "enum": TRANSACTION_CATEGORIES,
+                        "enum": [str(cat) for cat in TRANSACTION_CATEGORIES],
                         "description": "Overall transaction category"
                     },
                     "reasoning": {

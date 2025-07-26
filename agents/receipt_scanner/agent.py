@@ -39,10 +39,22 @@ class EnhancedReceiptScannerAgent:
     def _initialize_vertex_ai(self):
         """Initialize Vertex AI and the Gemini model with enhanced schema"""
         try:
+            import logging
+            logging.basicConfig(level=logging.DEBUG)
+            logger = logging.getLogger(__name__)
+            
+            logger.debug("Starting Vertex AI initialization")
+            
             # Initialize Vertex AI
             vertexai.init(project=self.project_id, location=self.location)
+            logger.debug("Vertex AI initialized successfully")
 
+            # Get the schema and debug it
+            schema = get_enhanced_receipt_schema()
+            logger.debug(f"Schema generated successfully, keys: {list(schema.keys())}")
+            
             # Configure generation settings for structured output
+            logger.debug("Creating GenerationConfig")
             generation_config = GenerationConfig(
                 temperature=0.1,  # Lower temperature for more consistent output
                 top_p=0.8,
@@ -50,14 +62,17 @@ class EnhancedReceiptScannerAgent:
                 candidate_count=1,
                 max_output_tokens=8192,
                 response_mime_type="application/json",
-                response_schema=get_enhanced_receipt_schema(),
+                response_schema=schema,
             )
+            logger.debug("GenerationConfig created successfully")
 
             # Initialize the model with our enhanced schema
+            logger.debug("Creating GenerativeModel")
             self.model = GenerativeModel(
-                model_name=self.model_name, 
+                model_name=self.model_name,
                 generation_config=generation_config
             )
+            logger.debug("GenerativeModel created successfully")
 
             logger.info(
                 "Enhanced Vertex AI initialized successfully",
@@ -215,7 +230,7 @@ class EnhancedReceiptScannerAgent:
     def _prepare_image_from_bytes(self, image_bytes: bytes) -> tuple[bytes, str]:
         """
         Prepare and validate the image from raw bytes for analysis
-        """
+    """
         try:
             # Validate and potentially resize image
             image = Image.open(io.BytesIO(image_bytes))
@@ -286,14 +301,14 @@ class EnhancedReceiptScannerAgent:
         """
         Transform validated AI result to ReceiptAnalysis model
 
-        Args:
+    Args:
             ai_result: Validated AI analysis result
             user_id: User ID for receipt_id generation
             start_time: Processing start time
 
-        Returns:
+    Returns:
             ReceiptAnalysis object
-        """
+    """
         try:
             store_info = ai_result.get("store_info", {})
             items_data = ai_result.get("items", [])
