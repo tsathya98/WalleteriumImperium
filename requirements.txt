@@ -1,6 +1,39 @@
-google-adk>=0.1.0
-google-generativeai>=0.8.0
-Pillow>=10.0.0
-requests>=2.31.0
-opencv-python>=4.8.0
-typing-extensions>=4.7.0 
+# Project Raseed - FastAPI Backend Dependencies
+
+# Core FastAPI and web framework
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+
+# Google Cloud services
+google-cloud-firestore
+google-cloud-aiplatform
+google-auth
+google-generativeai
+
+# Vertex AI specific dependencies
+google-api-core
+
+# HTTP and async support
+httpx
+aiohttp
+requests
+
+# Image and Video processing
+Pillow
+opencv-python
+
+# Video processing (optional, for creating test videos)
+# Install with: pip install opencv-python
+# Used in test_video_receipt.py for creating synthetic videos
+
+# Utilities
+typing-extensions
+python-multipart
+python-dotenv
+
+# Development and testing
+pytest
+pytest-asyncio
+psutil
