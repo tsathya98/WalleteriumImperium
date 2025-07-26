@@ -14,15 +14,12 @@ def get_enhanced_receipt_schema() -> Dict[str, Any]:
     Returns:
         JSON schema dictionary for Gemini's response_schema parameter
     """
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    logger = logging.getLogger(__name__)
     
     # Debug logging to identify the issue
-    logger.debug(f"TRANSACTION_CATEGORIES type: {type(TRANSACTION_CATEGORIES)}")
-    logger.debug(f"TRANSACTION_CATEGORIES value: {TRANSACTION_CATEGORIES}")
-    logger.debug(f"VENDOR_TYPES.keys() type: {type(list(VENDOR_TYPES.keys()))}")
-    logger.debug(f"VENDOR_TYPES.keys() value: {list(VENDOR_TYPES.keys())}")
+    print(f"DEBUG: TRANSACTION_CATEGORIES type: {type(TRANSACTION_CATEGORIES)}")
+    print(f"DEBUG: TRANSACTION_CATEGORIES value: {TRANSACTION_CATEGORIES}")
+    print(f"DEBUG: VENDOR_TYPES.keys() type: {type(list(VENDOR_TYPES.keys()))}")
+    print(f"DEBUG: VENDOR_TYPES.keys() value: {list(VENDOR_TYPES.keys())}")
     
     return {
         "type": "object",

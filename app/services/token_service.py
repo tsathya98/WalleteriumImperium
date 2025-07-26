@@ -8,9 +8,6 @@ import time
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Any
 
-from app.core.config import settings
-from app.core.monitoring import log_async_performance
-from app.models import ProcessingStatus, ProcessingStage, ErrorDetail
 from app.services.firestore_service import FirestoreService
 
 
