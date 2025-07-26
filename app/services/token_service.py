@@ -63,7 +63,8 @@ class TokenService:
             # Store the result
             self._processing_tasks[token] = {
                 "status": "completed" if result["status"] == "success" else "failed",
-                "result": result,
+                "result": result.get("data") if result["status"] == "success" else None,
+                "error": result.get("error") if result["status"] == "failed" else None,
                 "created_at": datetime.utcnow(),
                 "user_id": user_id
             }
@@ -91,8 +92,8 @@ class TokenService:
                 
                 return {
                     "status": task_data["status"],
-                    "result": task_data["result"].get("data") if task_data["status"] == "completed" else None,
-                    "error": task_data["result"].get("error") if task_data["status"] == "failed" else None,
+                    "result": task_data["result"],
+                    "error": task_data["error"],
                     "user_id": task_data["user_id"],  # Add user_id for API compatibility
                     "created_at": task_data["created_at"],
                     "updated_at": task_data["created_at"],  # Use same as created for simplicity
@@ -125,21 +126,19 @@ class TokenService:
             from agents.receipt_scanner.agent import get_receipt_scanner_agent
 
             agent = get_receipt_scanner_agent()
-            print(f"DEBUG TokenService: About to call agent with media_type: {media_type!r}")
-            print(f"DEBUG TokenService: media_bytes size: {len(media_bytes)} bytes")
-            print(f"DEBUG TokenService: user_id: {user_id!r}")
             
             # SYNC CALL - much simpler!
             ai_result = agent.analyze_receipt(
                 media_bytes, media_type, user_id
             )
             
+            # The result is now a dictionary containing the ProcessedReceipt model
             if ai_result["status"] == "success":
                 print(f"✅ Sync receipt processing completed")
                 print(f"   Token: {token}")
                 return ai_result
             else:
-                raise ValueError(f"Enhanced agent failed: {ai_result.get('error', 'Unknown error')}")
+                raise ValueError(f"Agent failed: {ai_result.get('error', 'Unknown error')}")
 
         except Exception as e:
             print(f"❌ Sync processing failed")

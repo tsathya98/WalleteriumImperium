@@ -1,128 +1,108 @@
 """
-Agentic prompts for the Receipt Scanner Agent
-Contains sophisticated decision-making logic embedded in prompts
+Prompts for the ADK-based Receipt Scanner Agent.
+Contains prompts that generate a rich, structured JSON output.
 """
 
 from typing import List
 from config.constants import TRANSACTION_CATEGORIES, VENDOR_TYPES
 
 
-def create_agentic_prompt(media_type: str) -> str:
+def create_structured_receipt_prompt(media_type: str) -> str:
     """
-    Creates the main agentic prompt with embedded decision-making logic
-    
+    Creates a comprehensive prompt for receipt extraction, guiding the AI
+    to produce a detailed, structured JSON output based on the ProcessedReceipt model.
+
     Args:
-        media_type: Type of media ('image' or 'video')
-        
+        media_type: Type of media ('image' or 'video').
+
     Returns:
-        Sophisticated prompt with decision logic
+        A sophisticated prompt for Gemini, tailored for receipt analysis.
     """
-    
-    media_instruction = (
-        "receipt image" if media_type == "image" else "receipt video"
-    )
-    
-    # Convert categories to a formatted string for the prompt
-    categories_list = "\n".join([f"- {cat}" for cat in TRANSACTION_CATEGORIES])
-    
-    # Convert vendor types to formatted descriptions
-    vendor_descriptions = "\n".join([
-        f"- {vendor_type}: {description}" 
-        for vendor_type, description in VENDOR_TYPES.items()
-    ])
-    
+    media_instruction = "receipt image" if media_type == "image" else "receipt video"
+
+    # A high-quality, one-shot example to guide the model's output format.
+    one_shot_example = """
+**Example Input:** A clear image of a restaurant receipt.
+**Example Output:**
+```json
+{
+    "mcp_format": {
+        "protocol_version": "1.0",
+        "data_type": "processed_receipt",
+        "status": "success",
+        "timestamp_utc": "2025-07-27T18:30:00Z",
+        "agent_id": "receipt_scanner_agent",
+        "confidence_score": 0.95
+    },
+    "receipt_payload": {
+        "processing_metadata": {
+            "receipt_id": "receipt-b4b1b3b1",
+            "source_filename": "example_receipt.jpg",
+            "source_type": "IMAGE",
+            "processing_timestamp_utc": "2025-07-27T18:30:00Z",
+            "processor_model": "gemini-2.5-flash"
+        },
+        "store_details": {
+            "name": "The Corner Bistro",
+            "address": "123 Main St, Anytown, USA 12345",
+            "phone_number": "555-123-4567",
+            "confidence_score": 0.98
+        },
+        "transaction_details": {
+            "date": "2025-07-27",
+            "time": "18:15:00",
+            "currency": "USD",
+            "transaction_id": "TXN-58392"
+        },
+        "line_items": [
+            {
+                "description": "Grilled Salmon",
+                "quantity": 1.0,
+                "unit_price": 25.00,
+                "total_price": 25.00,
+                "category": "Restaurant, fast-food",
+                "confidence_score": 0.97
+            },
+            {
+                "description": "House Salad",
+                "quantity": 2.0,
+                "unit_price": 8.00,
+                "total_price": 16.00,
+                "category": "Restaurant, fast-food",
+                "confidence_score": 0.96
+            }
+        ],
+        "payment_summary": {
+            "subtotal": 41.00,
+            "total_tax_amount": 3.28,
+            "tip": 8.00,
+            "total_amount": 52.28
+        },
+        "payment_method": {
+            "method": "Credit Card",
+            "card_type": "Visa",
+            "last_4_digits": "1234"
+        },
+        "special_info": null
+    }
+}
+```
+"""
+
     return f"""
-You are an expert receipt analysis AI with sophisticated decision-making capabilities. Analyze this {media_instruction} and follow this exact sequence of intelligent decisions:
+Analyze this {media_instruction} and extract ALL visible information.
+Your response MUST be a single, valid JSON object and nothing else. Do not add any text before or after the JSON.
 
-STAGE 1: VENDOR CLASSIFICATION
-First, analyze the receipt and classify the vendor type:
-{vendor_descriptions}
+{one_shot_example}
 
-STAGE 2: OUTPUT FORMAT DECISION
-Based on your vendor classification, choose the appropriate output structure:
+**Your Task:**
+Now, analyze the provided receipt and generate the JSON output in the exact same format as the example above.
 
-IF vendor_type == "RESTAURANT":
-→ Create items list with all menu items sharing the same category
-→ Focus on overall meal/experience description
-→ Items should have restaurant-related category
+**CRITICAL INSTRUCTIONS:**
 
-IF vendor_type == "SUPERMARKET":
-→ Create detailed item-by-item breakdown
-→ Each item gets its own specific category classification
-→ Focus on diverse item categorization
-
-IF vendor_type == "SERVICE":
-→ Create items list focusing on service details
-→ Detect recurring/subscription patterns
-→ Focus on billing frequency and renewal information
-
-STAGE 3: INTELLIGENT CATEGORIZATION
-Use ONLY these predefined categories for classification:
-{categories_list}
-
-STAGE 4: EXTRACT WITH CONTEXT
-Extract ALL information accurately:
-- Store name, address, phone (use "Not provided" if not visible)
-- Transaction date and time (use current date/time if not visible)
-- EVERY visible item with exact names, quantities, and prices
-- Calculate totals precisely - they must match the receipt
-- Assess image/video quality for confidence level
-
-STAGE 5: INTELLIGENT REASONING
-For each item, intelligently determine:
-- Appropriate category from the predefined list
-- Whether it likely has a warranty (electronics, appliances, etc.)
-- Whether it's a subscription/recurring service
-- Detailed description that would be useful for search/RAG
-
-CRITICAL INSTRUCTIONS:
-1. Extract EVERY visible item with exact names, quantities, and prices
-2. Use the vendor type to determine if items should have diverse categories or same category
-3. For warranties: Electronics, appliances, and expensive items often have warranties
-4. For subscriptions: Look for "monthly", "annual", "subscription", "renewal" keywords
-5. Descriptions should be detailed but concise - think about future search queries
-6. All numbers must be positive and realistic
-7. Date format: YYYY-MM-DD, Time format: HH:MM
-{"8. VIDEO ANALYSIS: Analyze ALL frames to find the clearest view. Use the best frame(s) with most readable text." if media_type == "video" else ""}
-
-QUALITY ASSESSMENT:
-- "high" confidence: Text is crisp, all key info clearly visible
-- "medium" confidence: Some blur/shadow but most info readable  
-- "low" confidence: Poor quality, missing key information
-
-Return ONLY valid JSON matching the required schema. No additional text or formatting.
-"""
-
-
-def create_fallback_values_prompt() -> str:
-    """
-    Creates a prompt section for fallback values when information is missing
-    """
-    return """
-FALLBACK VALUES FOR MISSING INFORMATION:
-- store name: Use "Unknown Store" if not visible
-- address: Use "Not provided" if store address not visible
-- phone: Use "Not provided" if phone number not visible
-- date: Use current date if transaction date not visible
-- time: Use "12:00" if transaction time not visible
-- receipt_number: Use "Not provided" if receipt number not visible
-- item descriptions: Generate helpful descriptions based on item names
-- categories: Use "Other" only if no predefined category fits
-"""
-
-
-def create_business_rules_prompt() -> str:
-    """
-    Creates a prompt section for business rules and validation
-    """
-    return """
-BUSINESS RULES:
-1. RESTAURANT receipts should have items with same category ("Restaurant, fast-food")
-2. SUPERMARKET receipts should have items with diverse, specific categories
-3. SERVICE receipts should focus on subscription/recurring detection
-4. Warranty detection: Look for warranty terms, electronics categories, expensive items
-5. Subscription detection: Look for "monthly", "subscription", "renewal", service providers
-6. Descriptions should be search-friendly and informative
-7. All monetary values must be positive numbers
-8. Quantities should be realistic (not negative or excessively large)
+1.  **JSON ONLY:** Your entire output must be the JSON object. No explanations, no apologies, no markdown `json` tags.
+2.  **Strict Schema:** Adhere strictly to the JSON structure from the example.
+3.  **Categorization:** Use one of these categories for each item: {', '.join(TRANSACTION_CATEGORIES)}
+4.  **Accuracy:** Ensure all numbers are correct and calculations are accurate.
+5.  **Completeness:** If a field is not on the receipt, use `null`. Do not omit any fields from the schema.
 """ 

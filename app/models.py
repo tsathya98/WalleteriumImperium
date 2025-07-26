@@ -4,9 +4,11 @@ MVP: Simple receipt analysis structure, will be enhanced with AI features later
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Dict, Any, Literal
+from typing import List, Optional, Dict, Any, Literal, Union
 from datetime import datetime
 from enum import Enum
+
+from agents.receipt_scanner.models import ProcessedReceipt
 
 
 class TransactionType(str, Enum):
@@ -48,6 +50,7 @@ class ProcessingStage(str, Enum):
     UPLOAD = "upload"
     ANALYSIS = "analysis"
     COMPLETED = "completed"
+    FAILED = "failed"
 
 
 # Nested Objects for Enhanced Structure
@@ -225,7 +228,7 @@ class ReceiptStatusResponse(BaseModel):
     progress: ProcessingProgress = Field(..., description="Processing progress")
 
     # Result data (only when completed)
-    result: Optional[ReceiptAnalysis] = Field(None, description="Processing result")
+    result: Optional[Union[ReceiptAnalysis, ProcessedReceipt]] = Field(None, description="Processing result")
 
     # Error information (only when failed)
     error: Optional[ErrorDetail] = Field(None, description="Error details")

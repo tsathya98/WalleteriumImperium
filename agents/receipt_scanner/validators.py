@@ -105,6 +105,10 @@ class ReceiptValidator:
         items = ai_result.get("items", [])
         totals = ai_result.get("totals", {})
         
+        # Check if total is missing
+        if "total" not in totals:
+            result.add_warning("Missing 'total' field in 'totals' object. Amount will be calculated from items.")
+
         # Calculate sum of item prices
         calculated_total = sum(item.get("total_price", 0) for item in items)
         declared_total = totals.get("total", 0)
