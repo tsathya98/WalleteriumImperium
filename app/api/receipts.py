@@ -129,12 +129,10 @@ async def upload_receipt(
 
         # Create processing token and start background processing with raw bytes
         # No base64 conversion needed - enhanced agent handles raw bytes directly
-        processing_token = (
-            http_request.app.state.token_service.create_processing_token(
-                user_id=current_user["uid"],
-                media_bytes=file_content,  # Pass raw bytes directly
-                media_type=media_type,
-            )
+        processing_token = await http_request.app.state.token_service.create_processing_token(
+            user_id=current_user["uid"],
+            media_bytes=file_content,  # Pass raw bytes directly
+            media_type=media_type,
         )
 
         # Estimate processing time based on media type and size
@@ -193,7 +191,9 @@ async def get_processing_status(
         )
 
         # Get token data
-        token_data = http_request.app.state.token_service.get_token_status(token)
+        token_data = await http_request.app.state.token_service.get_token_status(
+            token
+        )
 
         if not token_data:
             raise HTTPException(
@@ -260,7 +260,9 @@ async def retry_processing(
         )
 
         # Get token data to verify ownership
-        token_data = http_request.app.state.token_service.get_token_status(token)
+        token_data = await http_request.app.state.token_service.get_token_status(
+            token
+        )
 
         if not token_data:
             raise HTTPException(
@@ -274,7 +276,7 @@ async def retry_processing(
             )
 
         # Attempt retry
-        success = http_request.app.state.token_service.retry_failed_processing(
+        success = await http_request.app.state.token_service.retry_failed_processing(
             token
         )
 
@@ -326,7 +328,9 @@ async def cancel_processing(
         )
 
         # Get token data to verify ownership
-        token_data = http_request.app.state.token_service.get_token_status(token)
+        token_data = await http_request.app.state.token_service.get_token_status(
+            token
+        )
 
         if not token_data:
             raise HTTPException(
@@ -340,7 +344,7 @@ async def cancel_processing(
             )
 
         # Attempt cancellation
-        success = http_request.app.state.token_service.cancel_processing(token)
+        success = await http_request.app.state.token_service.cancel_processing(token)
 
         if not success:
             raise HTTPException(status_code=400, detail="Cancellation failed")

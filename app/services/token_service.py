@@ -3,232 +3,143 @@ Enhanced Token service for receipt processing
 Manages token-based processing workflow with hybrid agentic agent
 """
 
+import asyncio
 import uuid
-import time
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Any
 
+from app.core.config import get_settings
+from app.core.logging import get_logger
+from app.models import ProcessingStatus, ReceiptAnalysis
 from app.services.firestore_service import FirestoreService
+from agents.receipt_scanner.agent import get_receipt_scanner_agent
+
+logger = get_logger(__name__)
+settings = get_settings()
 
 
 class TokenService:
-    """Enhanced token service for managing receipt processing tokens with raw bytes (SYNC VERSION)"""
+    """Enhanced token service for managing receipt processing tokens."""
 
-    def __init__(self, firestore_service: FirestoreService = None):
-        """Initialize token service with dependency injection"""
+    def __init__(self, firestore_service: FirestoreService):
         self._firestore_service = firestore_service
-        self._processing_tasks: Dict[str, Any] = {}  # Simple dict instead of async tasks
+        self._processing_tasks: Dict[str, asyncio.Task] = {}
         self._initialized = False
-        
-        print(f"🎫 Initializing Enhanced Token Service (SYNC VERSION)")
+        logger.info("Initializing Enhanced Token Service...")
 
-    def initialize(self):
-        """Initialize the service (SYNC VERSION)"""
+    async def initialize(self):
+        """Initializes the service."""
         try:
             if not self._firestore_service:
                 raise RuntimeError("FirestoreService dependency not provided")
-
+            await self._firestore_service.initialize()
             self._initialized = True
-            print("✅ Enhanced token service initialized successfully")
-
+            logger.info("✅ Enhanced token service initialized successfully")
         except Exception as e:
-            print(f"❌ Failed to initialize token service: {e}")
+            logger.error(f"❌ Failed to initialize token service: {e}", exc_info=True)
             raise
 
     def _ensure_initialized(self):
-        """Ensure service is initialized"""
         if not self._initialized:
             raise RuntimeError("Token service not initialized")
 
-    def create_processing_token(
+    async def create_processing_token(
         self, user_id: str, media_bytes: bytes, media_type: str
     ) -> str:
-        """Create a new processing token and start processing with raw bytes (SYNC VERSION)"""
+        """Creates a token, saves it, and starts background processing."""
         self._ensure_initialized()
-
         try:
-            # Create token in database using injected service
-            # For sync version, we'll use a simple token generation
-            token = f"proc_{int(time.time())}_{str(uuid.uuid4())[:8]}"
-            
-            print(f"🎫 Processing token created with raw bytes")
-            print(f"   Token: {token}")
-            print(f"   User: {user_id}")
-            print(f"   Media type: {media_type}")
-            print(f"   Size: {len(media_bytes) / 1024:.1f} KB")
+            token = await self._firestore_service.create_token(user_id)
+            logger.info(f"Processing token created: {token} for user {user_id}")
 
-            # For sync processing, we'll process immediately
-            result = self._process_receipt_sync(token, user_id, media_bytes, media_type)
-            
-            # Store the result
-            self._processing_tasks[token] = {
-                "status": "completed" if result["status"] == "success" else "failed",
-                "result": result.get("data") if result["status"] == "success" else None,
-                "error": result.get("error") if result["status"] == "failed" else None,
-                "created_at": datetime.utcnow(),
-                "user_id": user_id
-            }
+            task = asyncio.create_task(
+                self._process_receipt_async(token, user_id, media_bytes, media_type)
+            )
+            self._processing_tasks[token] = task
+            task.add_done_callback(lambda t: self._processing_tasks.pop(token, None))
 
             return token
-
         except Exception as e:
-            print(f"❌ Failed to create processing token: {e}")
+            logger.error(f"❌ Failed to create processing token: {e}", exc_info=True)
             raise
 
-    def get_token_status(self, token: str) -> Optional[Dict[str, Any]]:
-        """Get the current status of a processing token (SYNC VERSION)"""
+    async def get_token_status(self, token: str) -> Optional[Dict[str, Any]]:
+        """Gets the status of a processing token from Firestore."""
         self._ensure_initialized()
-
         try:
-            # Check our local storage first for sync processing
-            if token in self._processing_tasks:
-                task_data = self._processing_tasks[token]
-                
-                # Simple expiry check (10 minutes)
-                if datetime.utcnow() - task_data["created_at"] > timedelta(minutes=10):
-                    print(f"⏰ Token expired: {token}")
-                    del self._processing_tasks[token]
-                    return None
-                
-                return {
-                    "status": task_data["status"],
-                    "result": task_data["result"],
-                    "error": task_data["error"],
-                    "user_id": task_data["user_id"],  # Add user_id for API compatibility
-                    "created_at": task_data["created_at"],
-                    "updated_at": task_data["created_at"],  # Use same as created for simplicity
-                    "expires_at": task_data["created_at"] + timedelta(minutes=10),  # 10 min expiry
-                    "progress": {
-                        "stage": "completed" if task_data["status"] == "completed" else "failed",
-                        "percentage": 100.0,
-                        "message": "Processing completed successfully!" if task_data["status"] == "completed" else "Processing failed"
-                    }
-                }
-
-            return None
-
+            token_data = await self._firestore_service.get_token(token)
+            if not token_data:
+                return None
+            return token_data.dict()
         except Exception as e:
-            print(f"❌ Failed to get token status: {e} (token: {token})")
+            logger.error(f"❌ Failed to get token status for {token}: {e}", exc_info=True)
             raise
 
-    def _process_receipt_sync(
+    async def _process_receipt_async(
         self, token: str, user_id: str, media_bytes: bytes, media_type: str
-    ) -> Dict[str, Any]:
-        """
-        Synchronous receipt processing with raw bytes (MUCH SIMPLER!)
-        """
+    ):
+        """Asynchronous receipt processing and Firestore saving."""
+        logger.info(f"🚀 Starting async receipt processing for token: {token}")
         try:
-            print(f"🚀 Starting sync receipt processing")
-            print(f"   Token: {token}")
-            print(f"   User: {user_id}")
-
-            # Process with Simple Receipt Scanner Agent (SYNC VERSION)
-            from agents.receipt_scanner.agent import get_receipt_scanner_agent
-
             agent = get_receipt_scanner_agent()
-            
-            # SYNC CALL - much simpler!
-            ai_result = agent.analyze_receipt(
-                media_bytes, media_type, user_id
-            )
-            
-            # The result is now a dictionary containing the ProcessedReceipt model
+            ai_result = agent.analyze_receipt(media_bytes, media_type, user_id)
+
             if ai_result["status"] == "success":
-                print(f"✅ Sync receipt processing completed")
-                print(f"   Token: {token}")
-                return ai_result
-            else:
-                raise ValueError(f"Agent failed: {ai_result.get('error', 'Unknown error')}")
-
-        except Exception as e:
-            print(f"❌ Sync processing failed")
-            print(f"   Token: {token}")
-            print(f"   User: {user_id}")
-            print(f"   Error: {e}")
-            
-            return {
-                "status": "failed",
-                "error": str(e)
-            }
-
-    def get_processing_stats(self) -> Dict[str, Any]:
-        """Get processing statistics (SYNC VERSION)"""
-        try:
-            completed = sum(1 for task in self._processing_tasks.values() if task["status"] == "completed")
-            failed = sum(1 for task in self._processing_tasks.values() if task["status"] == "failed")
-            
-            return {
-                "total_processed": len(self._processing_tasks),
-                "completed": completed,
-                "failed": failed,
-                "success_rate": completed / len(self._processing_tasks) * 100 if self._processing_tasks else 0
-            }
-
-        except Exception as e:
-            print(f"Failed to get processing stats: {e}")
-            return {}
-
-    def cleanup_expired_tokens(self):
-        """Clean up expired tokens (SYNC VERSION)"""
-        try:
-            now = datetime.utcnow()
-            expired_tokens = [
-                token for token, data in self._processing_tasks.items()
-                if now - data["created_at"] > timedelta(minutes=10)
-            ]
-            
-            for token in expired_tokens:
-                del self._processing_tasks[token]
-            
-            if expired_tokens:
-                print(f"Cleaned up {len(expired_tokens)} expired tokens")
-
-        except Exception as e:
-            print(f"Cleanup error: {e}")
-
-    def retry_failed_processing(self, token: str) -> bool:
-        """Retry failed processing (SYNC VERSION)"""
-        try:
-            if token not in self._processing_tasks:
-                print(f"⚠️ Token not found for retry: {token}")
-                return False
-            
-            task_data = self._processing_tasks[token]
-            if task_data["status"] != "failed":
-                print(f"⚠️ Token not in failed state: {token}")
-                return False
-            
-            print(f"🔄 Retrying processing for token: {token}")
-            # For sync version, just return success - would need original media bytes to actually retry
-            return True
-            
-        except Exception as e:
-            print(f"❌ Failed to retry processing: {e} (token: {token})")
-            return False
-
-    def cancel_processing(self, token: str) -> bool:
-        """Cancel processing (SYNC VERSION)"""
-        try:
-            if token in self._processing_tasks:
-                # Mark as cancelled
-                self._processing_tasks[token]["status"] = "cancelled"
-                print(f"Processing cancelled: {token}")
-                return True
-            else:
-                print(f"⚠️ Token not found for cancellation: {token}")
-                return False
+                receipt_analysis = ReceiptAnalysis(**ai_result["data"])
                 
+                await self._firestore_service.save_receipt(receipt_analysis)
+                logger.info(f"✅ Receipt saved to Firestore: {receipt_analysis.receipt_id}")
+
+                await self._firestore_service.update_token_status(
+                    token,
+                    status=ProcessingStatus.COMPLETED,
+                    result=receipt_analysis,
+                    progress={"stage": "completed", "percentage": 100.0, "message": "Processing complete"},
+                )
+                logger.info(f"✅ Sync receipt processing completed for token: {token}")
+            else:
+                error_message = ai_result.get("error", "Unknown agent error")
+                raise ValueError(f"Agent failed: {error_message}")
+
         except Exception as e:
-            print(f"❌ Failed to cancel processing: {e} (token: {token})")
-            return False
+            logger.error(f"❌ Async processing failed for token {token}: {e}", exc_info=True)
+            await self._firestore_service.update_token_status(
+                token,
+                status=ProcessingStatus.FAILED,
+                error={"code": "processing_error", "message": str(e)},
+                progress={"stage": "failed", "percentage": 100.0, "message": "Processing failed"},
+            )
 
-    def shutdown(self):
-        """Shutdown token service gracefully (SYNC VERSION)"""
-        print("Shutting down token service...")
+    async def retry_failed_processing(self, token: str) -> bool:
+        """Retries a failed processing task."""
+        self._ensure_initialized()
+        logger.info(f"🔄 Retrying processing for token: {token}")
+        # Implementation would require re-fetching media bytes or storing them
+        # For now, this is a placeholder for demonstrating the API endpoint.
+        return True
+
+    async def cancel_processing(self, token: str) -> bool:
+        """Cancels an ongoing processing task."""
+        self._ensure_initialized()
+        if token in self._processing_tasks:
+            self._processing_tasks[token].cancel()
+            logger.info(f"Processing cancelled for token: {token}")
+            await self._firestore_service.update_token_status(
+                token,
+                status=ProcessingStatus.FAILED,
+                error={"code": "cancelled", "message": "Processing cancelled by user."},
+            )
+            return True
+        return False
+
+    async def shutdown(self):
+        """Shuts down the token service gracefully."""
+        logger.info("Shutting down token service...")
+        for task in self._processing_tasks.values():
+            task.cancel()
+        await asyncio.gather(*self._processing_tasks.values(), return_exceptions=True)
         self._processing_tasks.clear()
+        if self._firestore_service:
+            await self._firestore_service.close()
         self._initialized = False
-        print("Token service shutdown complete")
-
-
-# Global service instance for backward compatibility
-token_service = TokenService()
+        logger.info("Token service shutdown complete.")

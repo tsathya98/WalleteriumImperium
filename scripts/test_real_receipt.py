@@ -63,6 +63,7 @@ def analyze_real_receipt(media_path: str, user_id: str = "real_test_user"):
     print("=" * 60)
 
     try:
+        start_time = time.time()
         # Check if media file exists
         if not Path(media_path).exists():
             print(f"❌ {media_type.title()} file not found: {media_path}")
@@ -150,11 +151,9 @@ def analyze_real_receipt(media_path: str, user_id: str = "real_test_user"):
                 print(f"🔄 Recurring: {result.get('recurring', False)}")
                 print(f"🛡️ Warranty: {result.get('warranty', False)}")
 
-                # Save detailed result
-                output_file = f"real_receipt_result_{Path(media_path).stem}.json"
-                with open(output_file, "w") as f:
-                    json.dump(status_data, f, indent=2, default=str)
-                print(f"\n💾 Full analysis saved to: {output_file}")
+
+                end_time = time.time()
+                print(f"\n⏱️ Total time taken: {end_time - start_time:.2f} seconds")
 
                 return status_data
 

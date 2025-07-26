@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
 
         # Initialize Token service (SYNC VERSION)
         token_service = TokenService(firestore_service=firestore_service)
-        token_service.initialize()  # Sync initialization
+        await token_service.initialize()  # Sync initialization
         app.state.token_service = token_service
 
         print("✅ All services initialized successfully")
@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
         print("🛑 Shutting down services...")
         # Cleanup if needed
         if hasattr(app.state, 'token_service'):
-            app.state.token_service.shutdown()
+            await app.state.token_service.shutdown()
 
 
 # Create FastAPI application
