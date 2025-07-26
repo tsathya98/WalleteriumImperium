@@ -1,9 +1,9 @@
 # Receipt Scanner Agent Module
-from .agent import IntelligentReceiptScannerAgent, get_receipt_scanner_agent
+from .agent import SimplifiedReceiptAgent, get_receipt_scanner_agent
 
 # Export the main agent components
 __all__ = [
-    "IntelligentReceiptScannerAgent",
+    "SimplifiedReceiptAgent",
     "get_receipt_scanner_agent",
 ]
 
