@@ -122,7 +122,9 @@ class ReceiptAnalysis(BaseModel):
     place: str = Field(..., description="Store or merchant name where transaction occurred")
     time: str = Field(..., description="Transaction timestamp (ISO 8601)")
     amount: float = Field(..., ge=0, description="Transaction amount (positive)")
-    transactionType: TransactionType = Field(..., description="Transaction type")
+    transactionType: Optional[TransactionType] = Field(
+        default=TransactionType.DEBIT, description="Transaction type"
+    )
 
     # Enhanced categorization and description
     category: Optional[str] = Field(None, description="Overall transaction category")

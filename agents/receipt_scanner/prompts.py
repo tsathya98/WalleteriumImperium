@@ -70,7 +70,8 @@ Now, analyze the provided receipt and generate the JSON output in the exact same
 
 1.  **JSON ONLY:** Your entire output must be the JSON object.
 2.  **Strict Schema:** Adhere strictly to the JSON structure from the example.
-3.  **Categorization:** Use one of these categories: {', '.join(TRANSACTION_CATEGORIES)}
-4.  **Accuracy:** Ensure all numbers are correct. `amount` must be the final total.
-5.  **Completeness:** If a field is not on the receipt, use `null` or a sensible default.
+3.  **Transaction Type:** The `transactionType` field MUST be either "debit" or "credit". If not specified on the receipt, default to "debit".
+4.  **Categorization:** Use one of these categories: {', '.join(TRANSACTION_CATEGORIES)}
+5.  **Accuracy:** Ensure all numbers are correct. `amount` must be the final total.
+6.  **Completeness:** If a field is not on the receipt, use `null` or a sensible default.
 """ 
