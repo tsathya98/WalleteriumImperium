@@ -4,226 +4,152 @@ Generates schemas that adapt to our enhanced data structure requirements
 """
 
 from typing import Dict, Any
-from config.constants import TRANSACTION_CATEGORIES, VENDOR_TYPES
 
 
 def get_enhanced_receipt_schema() -> Dict[str, Any]:
     """
-    Returns the enhanced JSON schema for receipt analysis with agentic decision-making
+    Returns the enhanced JSON schema for receipt analysis matching the ReceiptAnalysis model
     
     Returns:
         JSON schema dictionary for Gemini's response_schema parameter
     """
     
-    # Debug logging to identify the issue
-    print(f"DEBUG: TRANSACTION_CATEGORIES type: {type(TRANSACTION_CATEGORIES)}")
-    print(f"DEBUG: TRANSACTION_CATEGORIES value: {TRANSACTION_CATEGORIES}")
-    print(f"DEBUG: VENDOR_TYPES.keys() type: {type(list(VENDOR_TYPES.keys()))}")
-    print(f"DEBUG: VENDOR_TYPES.keys() value: {list(VENDOR_TYPES.keys())}")
+    print("📋 Creating simplified schema to match ReceiptAnalysis model")
     
     return {
         "type": "object",
         "required": [
-            "store_info",
-            "items", 
-            "totals",
-            "classification",
-            "processing_metadata"
+            "receipt_id",
+            "place", 
+            "time",
+            "amount",
+            "transactionType",
+            "category",
+            "description",
+            "importance",
+            "warranty",
+            "recurring",
+            "items",
+            "metadata"
         ],
         "properties": {
-            "store_info": {
-                "type": "object",
-                "required": ["name"],
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Store or merchant name"
-                    },
-                    "address": {
-                        "type": "string",
-                        "description": "Store address if visible, 'Not provided' otherwise"
-                    },
-                    "phone": {
-                        "type": "string", 
-                        "description": "Phone number if visible, 'Not provided' otherwise"
-                    },
-                    "date": {
-                        "type": "string",
-                        "description": "Transaction date (YYYY-MM-DD format)"
-                    },
-                    "time": {
-                        "type": "string",
-                        "description": "Transaction time (HH:MM format)"
-                    },
-                    "receipt_number": {
-                        "type": "string",
-                        "description": "Receipt/transaction number if visible"
-                    }
-                }
+            "receipt_id": {
+                "type": "string",
+                "description": "Unique receipt identifier"
+            },
+            "place": {
+                "type": "string",
+                "description": "Store or merchant name"
+            },
+            "time": {
+                "type": "string",
+                "description": "Transaction timestamp in ISO format"
+            },
+            "amount": {
+                "type": "number",
+                "description": "Total transaction amount"
+            },
+            "transactionType": {
+                "type": "string",
+                "enum": ["debit", "credit"],
+                "description": "Transaction type"
+            },
+            "category": {
+                "type": "string",
+                "enum": ["Restaurant", "Groceries", "Electronics", "Pharmacy", "Clothing", "Gas", "Other"],
+                "description": "Overall transaction category"
+            },
+            "description": {
+                "type": "string",
+                "description": "Brief description of the transaction"
+            },
+            "importance": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "description": "Transaction importance level"
+            },
+            "warranty": {
+                "type": ["object", "null"],
+                "description": "Warranty information if applicable"
+            },
+            "recurring": {
+                "type": ["object", "null"],
+                "description": "Recurring payment information if applicable"
             },
             "items": {
                 "type": "array",
-                "minItems": 1,
+                "description": "List of items from receipt",
                 "items": {
                     "type": "object",
                     "required": ["name", "quantity", "total_price", "category"],
                     "properties": {
                         "name": {
                             "type": "string",
-                            "description": "Item name exactly as shown on receipt"
+                            "description": "Item name"
                         },
                         "quantity": {
                             "type": "number",
-                            "minimum": 0,
                             "description": "Item quantity"
                         },
                         "unit_price": {
                             "type": ["number", "null"],
-                            "minimum": 0,
-                            "description": "Price per unit if available"
+                            "description": "Price per unit"
                         },
                         "total_price": {
-                            "type": "number", 
-                            "minimum": 0,
+                            "type": "number",
                             "description": "Total price for this item"
                         },
                         "category": {
                             "type": "string",
-                            "enum": [str(cat) for cat in TRANSACTION_CATEGORIES],
-                            "description": "Item category from predefined list"
+                            "enum": ["Restaurant", "Groceries", "Electronics", "Pharmacy", "Clothing", "Gas", "Other"],
+                            "description": "Item category"
                         },
                         "description": {
                             "type": "string",
-                            "description": "Detailed item description for search/RAG purposes"
+                            "description": "Item description"
                         },
                         "warranty": {
                             "type": ["object", "null"],
-                            "properties": {
-                                "validUntil": {
-                                    "type": "string",
-                                    "description": "Warranty expiry date (ISO 8601)"
-                                },
-                                "provider": {
-                                    "type": "string",
-                                    "description": "Warranty provider (Manufacturer/Store/etc.)"
-                                },
-                                "coverage": {
-                                    "type": "string",
-                                    "description": "Coverage description"
-                                }
-                            },
-                            "required": ["validUntil", "provider"],
-                            "description": "Warranty details if item has warranty"
+                            "description": "Item warranty if applicable"
                         },
                         "recurring": {
                             "type": ["object", "null"],
-                            "properties": {
-                                "frequency": {
-                                    "type": "string",
-                                    "description": "Billing frequency (monthly, yearly, etc.)"
-                                },
-                                "nextBillingDate": {
-                                    "type": ["string", "null"],
-                                    "description": "Next billing date (ISO 8601)"
-                                },
-                                "subscriptionType": {
-                                    "type": ["string", "null"],
-                                    "description": "Type of subscription"
-                                },
-                                "autoRenew": {
-                                    "type": ["boolean", "null"],
-                                    "description": "Auto-renewal status"
-                                }
-                            },
-                            "required": ["frequency"],
-                            "description": "Subscription details if item is recurring"
+                            "description": "Item recurring info if applicable"
                         }
                     }
                 }
             },
-            "totals": {
+            "metadata": {
                 "type": "object",
-                "required": ["total"],
-                "properties": {
-                    "subtotal": {
-                        "type": ["number", "null"],
-                        "minimum": 0,
-                        "description": "Subtotal amount"
-                    },
-                    "tax": {
-                        "type": ["number", "null"],
-                        "minimum": 0,
-                        "description": "Tax amount"
-                    },
-                    "discount": {
-                        "type": ["number", "null"], 
-                        "minimum": 0,
-                        "description": "Discount amount"
-                    },
-                    "total": {
-                        "type": "number",
-                        "minimum": 0,
-                        "description": "Final total amount"
-                    },
-                    "payment_method": {
-                        "type": ["string", "null"],
-                        "enum": ["cash", "card", "mobile", "other", "unknown", "null"],
-                        "description": "Payment method if visible"
-                    }
-                }
-            },
-            "classification": {
-                "type": "object",
-                "required": ["vendor_type", "overall_category", "reasoning"],
+                "required": ["vendor_type", "confidence"],
                 "properties": {
                     "vendor_type": {
                         "type": "string",
-                        "enum": [str(key) for key in VENDOR_TYPES.keys()],
-                        "description": "AI-classified vendor type"
+                        "enum": ["RESTAURANT", "SUPERMARKET", "SERVICE", "OTHER"],
+                        "description": "Type of vendor"
                     },
-                    "overall_category": {
-                        "type": "string",
-                        "enum": [str(cat) for cat in TRANSACTION_CATEGORIES],
-                        "description": "Overall transaction category"
-                    },
-                    "reasoning": {
-                        "type": "string",
-                        "description": "Brief explanation of vendor type classification"
-                    },
-                    "has_warranties": {
-                        "type": "boolean",
-                        "description": "True if any items have warranties"
-                    },
-                    "has_subscriptions": {
-                        "type": "boolean", 
-                        "description": "True if any items are subscriptions"
-                    }
-                }
-            },
-            "processing_metadata": {
-                "type": "object",
-                "required": ["confidence", "image_quality"],
-                "properties": {
                     "confidence": {
                         "type": "string",
-                        "enum": ["high", "medium", "low"],
-                        "description": "Overall confidence in extraction accuracy"
+                        "enum": ["low", "medium", "high"],
+                        "description": "Analysis confidence level"
                     },
-                    "image_quality": {
-                        "type": "string",
-                        "enum": ["excellent", "good", "fair", "poor"],
-                        "description": "Assessed image/video quality"
-                    },
-                    "items_count": {
+                    "processing_time_seconds": {
                         "type": "number",
-                        "description": "Number of items extracted"
+                        "description": "Processing time"
                     },
-                    "extraction_notes": {
-                        "type": ["string", "null"],
-                        "description": "Any notes about extraction challenges"
+                    "model_version": {
+                        "type": "string",
+                        "description": "AI model version used"
                     }
                 }
             }
         }
     }
+
+
+def get_validation_schema() -> Dict[str, Any]:
+    """
+    Returns a simplified schema for validation purposes
+    """
+    return get_enhanced_receipt_schema()  # Use same schema for now
 

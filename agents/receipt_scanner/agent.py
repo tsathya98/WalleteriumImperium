@@ -60,7 +60,7 @@ class EnhancedReceiptScannerAgent:
                 candidate_count=1,
                 max_output_tokens=8192,
                 response_mime_type="application/json",
-                response_schema=schema,
+                response_schema=schema,  # Re-enable for structured output
             )
             print("✅ GenerationConfig created successfully")
 

@@ -130,7 +130,7 @@ async def upload_receipt(
         # Create processing token and start background processing with raw bytes
         # No base64 conversion needed - enhanced agent handles raw bytes directly
         processing_token = (
-            await http_request.app.state.token_service.create_processing_token(
+            http_request.app.state.token_service.create_processing_token(
                 user_id=current_user["uid"],
                 media_bytes=file_content,  # Pass raw bytes directly
                 media_type=media_type,
@@ -193,7 +193,7 @@ async def get_processing_status(
         )
 
         # Get token data
-        token_data = await http_request.app.state.token_service.get_token_status(token)
+        token_data = http_request.app.state.token_service.get_token_status(token)
 
         if not token_data:
             raise HTTPException(
@@ -201,7 +201,7 @@ async def get_processing_status(
             )
 
         # Verify token belongs to user (security check)
-        if token_data.user_id != current_user["uid"]:
+        if token_data["user_id"] != current_user["uid"]:
             raise HTTPException(
                 status_code=403, detail="Access denied: Token belongs to different user"
             )
@@ -209,21 +209,21 @@ async def get_processing_status(
         # Build response
         response = ReceiptStatusResponse(
             token=token,
-            status=token_data.status,
-            progress=token_data.progress,
-            result=token_data.result,
-            error=token_data.error,
-            created_at=token_data.created_at,
-            updated_at=token_data.updated_at,
-            expires_at=token_data.expires_at,
+            status=token_data["status"],
+            progress=token_data["progress"],
+            result=token_data["result"],
+            error=token_data["error"],
+            created_at=token_data.get("created_at"),
+            updated_at=token_data.get("updated_at"),
+            expires_at=token_data.get("expires_at"),
         )
 
         logger.debug(
             "Status check completed",
             extra={
                 "token": token,
-                "status": token_data.status.value,
-                "progress": token_data.progress.percentage,
+                "status": token_data["status"],
+                "progress": token_data["progress"]["percentage"],
             },
         )
 
@@ -260,7 +260,7 @@ async def retry_processing(
         )
 
         # Get token data to verify ownership
-        token_data = await http_request.app.state.token_service.get_token_status(token)
+        token_data = http_request.app.state.token_service.get_token_status(token)
 
         if not token_data:
             raise HTTPException(
@@ -268,13 +268,13 @@ async def retry_processing(
             )
 
         # Verify token belongs to user
-        if token_data.user_id != current_user["uid"]:
+        if token_data["user_id"] != current_user["uid"]:
             raise HTTPException(
                 status_code=403, detail="Access denied: Token belongs to different user"
             )
 
         # Attempt retry
-        success = await http_request.app.state.token_service.retry_failed_processing(
+        success = http_request.app.state.token_service.retry_failed_processing(
             token
         )
 
@@ -326,7 +326,7 @@ async def cancel_processing(
         )
 
         # Get token data to verify ownership
-        token_data = await http_request.app.state.token_service.get_token_status(token)
+        token_data = http_request.app.state.token_service.get_token_status(token)
 
         if not token_data:
             raise HTTPException(
@@ -334,13 +334,13 @@ async def cancel_processing(
             )
 
         # Verify token belongs to user
-        if token_data.user_id != current_user["uid"]:
+        if token_data["user_id"] != current_user["uid"]:
             raise HTTPException(
                 status_code=403, detail="Access denied: Token belongs to different user"
             )
 
         # Attempt cancellation
-        success = await http_request.app.state.token_service.cancel_processing(token)
+        success = http_request.app.state.token_service.cancel_processing(token)
 
         if not success:
             raise HTTPException(status_code=400, detail="Cancellation failed")

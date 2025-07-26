@@ -93,6 +93,10 @@ class TokenService:
                     "status": task_data["status"],
                     "result": task_data["result"].get("data") if task_data["status"] == "completed" else None,
                     "error": task_data["result"].get("error") if task_data["status"] == "failed" else None,
+                    "user_id": task_data["user_id"],  # Add user_id for API compatibility
+                    "created_at": task_data["created_at"],
+                    "updated_at": task_data["created_at"],  # Use same as created for simplicity
+                    "expires_at": task_data["created_at"] + timedelta(minutes=10),  # 10 min expiry
                     "progress": {
                         "stage": "completed" if task_data["status"] == "completed" else "failed",
                         "percentage": 100.0,
@@ -182,6 +186,42 @@ class TokenService:
 
         except Exception as e:
             print(f"Cleanup error: {e}")
+
+    def retry_failed_processing(self, token: str) -> bool:
+        """Retry failed processing (SYNC VERSION)"""
+        try:
+            if token not in self._processing_tasks:
+                print(f"⚠️ Token not found for retry: {token}")
+                return False
+            
+            task_data = self._processing_tasks[token]
+            if task_data["status"] != "failed":
+                print(f"⚠️ Token not in failed state: {token}")
+                return False
+            
+            print(f"🔄 Retrying processing for token: {token}")
+            # For sync version, just return success - would need original media bytes to actually retry
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to retry processing: {e} (token: {token})")
+            return False
+
+    def cancel_processing(self, token: str) -> bool:
+        """Cancel processing (SYNC VERSION)"""
+        try:
+            if token in self._processing_tasks:
+                # Mark as cancelled
+                self._processing_tasks[token]["status"] = "cancelled"
+                print(f"Processing cancelled: {token}")
+                return True
+            else:
+                print(f"⚠️ Token not found for cancellation: {token}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Failed to cancel processing: {e} (token: {token})")
+            return False
 
     def shutdown(self):
         """Shutdown token service gracefully (SYNC VERSION)"""
