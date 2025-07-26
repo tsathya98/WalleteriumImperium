@@ -87,7 +87,9 @@ class TokenService:
             if ai_result["status"] == "success":
                 receipt_analysis = ReceiptAnalysis(**ai_result["data"])
                 
-                await self._firestore_service.save_receipt(receipt_analysis)
+                await self._firestore_service.save_receipt(
+                    user_id, receipt_analysis
+                )
                 logger.info(f"✅ Receipt saved to Firestore: {receipt_analysis.receipt_id}")
 
                 await self._firestore_service.update_token_status(
