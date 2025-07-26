@@ -4,77 +4,54 @@ Generates schemas that adapt to our enhanced data structure requirements
 """
 
 from typing import Dict, Any
+from config.constants import TRANSACTION_CATEGORIES
 
 
 def get_enhanced_receipt_schema() -> Dict[str, Any]:
     """
-    Returns the enhanced JSON schema for receipt analysis matching the ReceiptAnalysis model
+    Returns the enhanced JSON schema that works with existing validators
     
     Returns:
         JSON schema dictionary for Gemini's response_schema parameter
     """
     
-    print("📋 Creating simplified schema to match ReceiptAnalysis model")
+    print("📋 Creating schema to work with existing validation system")
     
     return {
         "type": "object",
         "required": [
-            "receipt_id",
-            "place", 
-            "time",
-            "amount",
-            "transactionType",
-            "category",
-            "description",
-            "importance",
-            "warranty",
-            "recurring",
-            "items",
-            "metadata"
+            "store_info",
+            "items", 
+            "totals",
+            "classification",
+            "processing_metadata"
         ],
         "properties": {
-            "receipt_id": {
-                "type": "string",
-                "description": "Unique receipt identifier"
-            },
-            "place": {
-                "type": "string",
-                "description": "Store or merchant name"
-            },
-            "time": {
-                "type": "string",
-                "description": "Transaction timestamp in ISO format"
-            },
-            "amount": {
-                "type": "number",
-                "description": "Total transaction amount"
-            },
-            "transactionType": {
-                "type": "string",
-                "enum": ["debit", "credit"],
-                "description": "Transaction type"
-            },
-            "category": {
-                "type": "string",
-                "enum": ["Restaurant", "Groceries", "Electronics", "Pharmacy", "Clothing", "Gas", "Other"],
-                "description": "Overall transaction category"
-            },
-            "description": {
-                "type": "string",
-                "description": "Brief description of the transaction"
-            },
-            "importance": {
-                "type": "string",
-                "enum": ["low", "medium", "high"],
-                "description": "Transaction importance level"
-            },
-            "warranty": {
-                "type": ["object", "null"],
-                "description": "Warranty information if applicable"
-            },
-            "recurring": {
-                "type": ["object", "null"],
-                "description": "Recurring payment information if applicable"
+            "store_info": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Store or merchant name"
+                    },
+                    "address": {
+                        "type": "string",
+                        "description": "Store address (use 'Not provided' if not visible)"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "description": "Store phone number (use 'Not provided' if not visible)"
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Transaction date (YYYY-MM-DD format)"
+                    },
+                    "time": {
+                        "type": "string",
+                        "description": "Transaction time (HH:MM format)"
+                    }
+                }
             },
             "items": {
                 "type": "array",
@@ -101,7 +78,7 @@ def get_enhanced_receipt_schema() -> Dict[str, Any]:
                         },
                         "category": {
                             "type": "string",
-                            "enum": ["Restaurant", "Groceries", "Electronics", "Pharmacy", "Clothing", "Gas", "Other"],
+                            "enum": TRANSACTION_CATEGORIES,
                             "description": "Item category"
                         },
                         "description": {
@@ -110,36 +87,80 @@ def get_enhanced_receipt_schema() -> Dict[str, Any]:
                         },
                         "warranty": {
                             "type": ["object", "null"],
+                            "properties": {
+                                "validUntil": {"type": "string"},
+                                "provider": {"type": "string"},
+                                "coverage": {"type": "string"}
+                            },
                             "description": "Item warranty if applicable"
                         },
                         "recurring": {
                             "type": ["object", "null"],
+                            "properties": {
+                                "frequency": {"type": "string"},
+                                "nextBillingDate": {"type": "string"},
+                                "subscriptionType": {"type": "string"},
+                                "autoRenew": {"type": "boolean"}
+                            },
                             "description": "Item recurring info if applicable"
                         }
                     }
                 }
             },
-            "metadata": {
+            "totals": {
                 "type": "object",
-                "required": ["vendor_type", "confidence"],
+                "required": ["total"],
+                "properties": {
+                    "subtotal": {
+                        "type": "number",
+                        "description": "Subtotal amount"
+                    },
+                    "tax": {
+                        "type": "number",
+                        "description": "Tax amount"
+                    },
+                    "discount": {
+                        "type": "number",
+                        "description": "Discount amount"
+                    },
+                    "total": {
+                        "type": "number",
+                        "description": "Total transaction amount"
+                    }
+                }
+            },
+            "classification": {
+                "type": "object",
+                "required": ["vendor_type", "overall_category"],
                 "properties": {
                     "vendor_type": {
                         "type": "string",
                         "enum": ["RESTAURANT", "SUPERMARKET", "SERVICE", "OTHER"],
                         "description": "Type of vendor"
                     },
+                    "overall_category": {
+                        "type": "string",
+                        "enum": TRANSACTION_CATEGORIES,
+                        "description": "Overall transaction category"
+                    },
+                    "has_warranties": {
+                        "type": "boolean",
+                        "description": "Whether any items have warranties"
+                    },
+                    "has_subscriptions": {
+                        "type": "boolean",
+                        "description": "Whether any items are subscriptions"
+                    }
+                }
+            },
+            "processing_metadata": {
+                "type": "object",
+                "required": ["confidence"],
+                "properties": {
                     "confidence": {
                         "type": "string",
                         "enum": ["low", "medium", "high"],
                         "description": "Analysis confidence level"
-                    },
-                    "processing_time_seconds": {
-                        "type": "number",
-                        "description": "Processing time"
-                    },
-                    "model_version": {
-                        "type": "string",
-                        "description": "AI model version used"
                     }
                 }
             }

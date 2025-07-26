@@ -5,7 +5,7 @@ Centralized constants for the application
 # List of allowed transaction categories for AI processing
 # This list serves as the single source of truth for categorization.
 TRANSACTION_CATEGORIES = [
-    # Expenses
+    # Daily Expenses
     "Groceries",
     "Restaurant, fast-food",
     "Clothes & shoes",
@@ -15,37 +15,39 @@ TRANSACTION_CATEGORIES = [
     "Kids, toys",
     "Pharmacy",
     "Doctor",
+    
+    # Housing & Utilities
     "Rent",
     "Mortgage",
     "Maintenance, repairs",
     "Electricity & Gas",
-    "Public transport, Taxi",
-
-    # Investments & Savings
-    "Investment: Realty",
-    "Investment: Vehicles",
-    "Investment: Financial investments / Savings",
-    "Investment: House/land/etc.",
-
-    # Leisure & Entertainment
-    "Vacation",
-    "Software, apps, games (onetime/subscription)",
-    "Subscriptions: TV, streaming (entertainment)",
-
-    # Subscriptions & Bills
-    "Subscription: Phone, Internet recharge",
-    "Insurances",
-    "Loans, Interests",
-
+    
     # Transportation
+    "Public transport, Taxi",
     "Fuel",
     "Parking",
-
+    
+    # Subscriptions & Services
+    "Subscription: Phone, Internet recharge",
+    "Subscriptions: TV, streaming (entertainment)",
+    "Software, apps, games (onetime/subscription)",
+    "Insurances",
+    "Loans, Interests",
+    
+    # Investments
+    "Investment: Realty",
+    "Investment: Vehicles", 
+    "Investment: Financial investments / Savings",
+    "Investment: House/land/etc.",
+    
+    # Leisure
+    "Vacation",
+    
     # Income
     "Income: Fixed (recurring)",
     "Income: Variable",
     
-    # Other
+    # Fallback
     "Other"
 ]
 

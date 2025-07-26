@@ -121,16 +121,16 @@ class TokenService:
             print(f"   Token: {token}")
             print(f"   User: {user_id}")
 
-            # Process with Enhanced Receipt Scanner Agent (SYNC VERSION)
-            from agents.receipt_scanner.agent import get_enhanced_receipt_scanner_agent
-            
-            enhanced_agent = get_enhanced_receipt_scanner_agent()
-            print(f"DEBUG TokenService: About to call enhanced_agent with media_type: {media_type!r}")
+            # Process with Simple Receipt Scanner Agent (SYNC VERSION)
+            from agents.receipt_scanner.agent import get_receipt_scanner_agent
+
+            agent = get_receipt_scanner_agent()
+            print(f"DEBUG TokenService: About to call agent with media_type: {media_type!r}")
             print(f"DEBUG TokenService: media_bytes size: {len(media_bytes)} bytes")
             print(f"DEBUG TokenService: user_id: {user_id!r}")
             
             # SYNC CALL - much simpler!
-            ai_result = enhanced_agent.analyze_receipt_media(
+            ai_result = agent.analyze_receipt(
                 media_bytes, media_type, user_id
             )
             
