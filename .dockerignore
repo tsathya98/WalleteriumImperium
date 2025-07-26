@@ -1,0 +1,54 @@
+# Git files
+.git/
+.gitignore
+
+# Python cache and virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# Documentation and README files (optional - comment out if needed)
+*.md
+
+# Development and debug files
+.env
+.env.local
+debug_test.py
+simple_test.py
+test_*.py
+
+# Docker files (avoid recursion)
+Dockerfile*
+docker-compose*.yml
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log 

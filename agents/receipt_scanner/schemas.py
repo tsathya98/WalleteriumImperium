@@ -78,8 +78,7 @@ def get_enhanced_receipt_schema() -> Dict[str, Any]:
                         },
                         "category": {
                             "type": "string",
-                            "enum": TRANSACTION_CATEGORIES,
-                            "description": "Item category"
+                            "description": "Item category (must be one of the predefined categories)"
                         },
                         "description": {
                             "type": "string",
@@ -140,8 +139,7 @@ def get_enhanced_receipt_schema() -> Dict[str, Any]:
                     },
                     "overall_category": {
                         "type": "string",
-                        "enum": TRANSACTION_CATEGORIES,
-                        "description": "Overall transaction category"
+                        "description": "Overall transaction category (must be one of the predefined categories)"
                     },
                     "has_warranties": {
                         "type": "boolean",

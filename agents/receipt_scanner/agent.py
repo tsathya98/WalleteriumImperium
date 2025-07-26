@@ -42,27 +42,39 @@ class SimpleReceiptScannerAgent:
         try:
             # Initialize Vertex AI
             vertexai.init(project=self.project_id, location=self.location)
+            print("✅ Vertex AI initialized")
             
-            # Simple generation config for structured output
-            generation_config = GenerationConfig(
-                temperature=0.1,  # Low for consistency
-                top_p=0.8,
-                top_k=40,
-                max_output_tokens=8192,
-                response_mime_type="application/json",
-                response_schema=get_enhanced_receipt_schema()
-            )
+            # Try simple generation config first (without schema)
+            try:
+                generation_config = GenerationConfig(
+                    temperature=0.1,
+                    top_p=0.8,
+                    top_k=40,
+                    max_output_tokens=8192,
+                    response_mime_type="application/json"
+                )
+                print("✅ GenerationConfig created")
+            except Exception as e:
+                print(f"❌ GenerationConfig failed: {e}")
+                raise
 
-            # Initialize model
-            self.model = GenerativeModel(
-                model_name=self.model_name,
-                generation_config=generation_config
-            )
+            # Initialize model without schema first
+            try:
+                self.model = GenerativeModel(
+                    model_name=self.model_name,
+                    generation_config=generation_config
+                )
+                print("✅ Model initialized (without schema)")
+            except Exception as e:
+                print(f"❌ Model initialization failed: {e}")
+                raise
             
             print("✅ Agent ready!")
 
         except Exception as e:
             print(f"❌ Failed to initialize: {e}")
+            import traceback
+            traceback.print_exc()
             raise
 
     def analyze_receipt(self, media_bytes: bytes, media_type: str, user_id: str) -> Dict[str, Any]:

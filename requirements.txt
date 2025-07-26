@@ -34,6 +34,9 @@ requests
 # Install with: pip install opencv-python
 # Used in test_video_receipt.py for creating synthetic videos
 
+# Production server
+gunicorn
+
 # Utilities
 typing-extensions
 uvicorn[standard]
