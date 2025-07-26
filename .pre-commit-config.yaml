@@ -2,7 +2,7 @@ fail_fast: true
 default_stages: [pre-commit]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v5.0.0
     hooks:
       - id: check-ast
         language_version: python3.12
@@ -10,15 +10,16 @@ repos:
       - id: check-case-conflict
       - id: trailing-whitespace
         exclude: ^.github/
-      - id: mixed-line-ending
-        exclude: ^.github/
       - id: end-of-file-fixer
         exclude: ^.github/
       - id: check-yaml
+      - id: check-toml
+      - id: requirements-txt-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: ^.github/
       - id: "no-commit-to-branch"
         args: [--branch, master, --branch, develop]
-      - id: requirements-txt-fixer
-      - id: check-toml
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v2.1.1
     hooks:

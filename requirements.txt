@@ -1,28 +1,34 @@
 # Project Raseed - FastAPI Backend Dependencies
 
+aiohttp
 # Core FastAPI and web framework
 fastapi
-uvicorn[standard]
-pydantic
-pydantic-settings
-
-# Google Cloud services
-google-cloud-firestore
-google-cloud-aiplatform
-google-auth
-google-generativeai
 
 # Vertex AI specific dependencies
 google-api-core
+google-auth
+google-cloud-aiplatform
+
+# Google Cloud services
+google-cloud-firestore
+google-generativeai
 
 # HTTP and async support
 httpx
-aiohttp
-requests
+opencv-python
 
 # Image and Video processing
 Pillow
-opencv-python
+psutil
+pydantic
+pydantic-settings
+
+# Development and testing
+pytest
+pytest-asyncio
+python-dotenv
+python-multipart
+requests
 
 # Video processing (optional, for creating test videos)
 # Install with: pip install opencv-python
@@ -30,10 +36,4 @@ opencv-python
 
 # Utilities
 typing-extensions
-python-multipart
-python-dotenv
-
-# Development and testing
-pytest
-pytest-asyncio
-psutil
+uvicorn[standard]

@@ -6,9 +6,11 @@ from pathlib import Path
 import io
 from PIL import Image
 from google.adk.agents import Agent
+
 # Import Google Generative AI for Gemini vision capabilities
 import google.generativeai as genai
 import os
+
 
 def analyze_receipt() -> dict:
     """Analyzes the uploaded receipt image to extract items and pricing information.
