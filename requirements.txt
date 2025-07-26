@@ -13,7 +13,6 @@ google-auth
 google-generativeai
 
 # Vertex AI specific dependencies
-google-cloud-vertexai
 google-api-core
 
 # HTTP and async support
