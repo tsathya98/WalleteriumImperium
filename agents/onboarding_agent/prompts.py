@@ -59,4 +59,4 @@ Conversation:
 {conversation_history}
 
 Inferred Persona:
-""" 
+"""

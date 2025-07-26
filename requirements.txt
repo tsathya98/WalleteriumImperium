@@ -4,35 +4,41 @@ aiohttp
 # Core FastAPI and web framework
 fastapi
 
+# Google Agent Development Kit (ADK)
+google-adk
+
 # Vertex AI specific dependencies
 google-api-core
+google-api-python-client
 google-auth
-google-cloud-aiplatform==1.59.0
-google-api-python-client==2.134.0
-google-auth-oauthlib==1.2.0
-langchain-google-vertexai==1.0.4
-requests==2.32.3
-# Pillow==10.4.0
-# pydantic==2.8.2
-pydantic-settings
-uvicorn==0.30.1
+google-auth-httplib2
+google-auth-oauthlib
+google-cloud-aiplatform
 
 # Google Cloud services
 google-cloud-firestore
 google-cloud-storage
+google-cloud-vision
 google-generativeai
 
-# Google Agent Development Kit (ADK)
-google-adk
+# Video processing (optional, for creating test videos)
+# Install with: pip install opencv-python
+# Used in test_video_receipt.py for creating synthetic videos
+
+# Production server
+gunicorn
 
 # HTTP and async support
 httpx
+langchain-google-vertexai
 opencv-python
 
 # Image and Video processing
 Pillow
 psutil
 pydantic
+# Pillow==10.4.0
+# pydantic==2.8.2
 pydantic-settings
 
 # Development and testing
@@ -41,13 +47,7 @@ pytest-asyncio
 python-dotenv
 python-multipart
 requests
-
-# Video processing (optional, for creating test videos)
-# Install with: pip install opencv-python
-# Used in test_video_receipt.py for creating synthetic videos
-
-# Production server
-gunicorn
+shortuuid
 
 # Utilities
 typing-extensions

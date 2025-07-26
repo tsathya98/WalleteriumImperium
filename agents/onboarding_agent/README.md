@@ -56,4 +56,4 @@ The agent is exposed via a RESTful API endpoint for easy integration with the fr
 
 - **Integration with Firestore**: Store and retrieve user profiles from a Firestore database.
 - **RAG for Deeper Insights**: Utilize Retrieval-Augmented Generation (RAG) to pull in external data or previous conversation snippets to provide a more contextual experience.
-- **More Sophisticated Personas**: Expand the range of personas and the logic used to assign them. 
+- **More Sophisticated Personas**: Expand the range of personas and the logic used to assign them.

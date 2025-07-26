@@ -93,4 +93,4 @@ echo "  2. Your service will be available at a Cloud Run URL"
 export SERVICE_ACCOUNT_EMAIL
 export REPOSITORY_NAME
 
-echo -e "${YELLOW}💾 Environment variables set for deployment${NC}" 
+echo -e "${YELLOW}💾 Environment variables set for deployment${NC}"

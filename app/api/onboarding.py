@@ -30,7 +30,9 @@ async def chat_with_onboarding_agent(request: OnboardingRequest):
 
     try:
         # Format the instruction with the user's language
-        formatted_instruction = onboarding_agent.instruction.format(language=request.language)
+        formatted_instruction = onboarding_agent.instruction.format(
+            language=request.language
+        )
 
         # Create a temporary agent with the formatted instruction
         temp_agent = onboarding_agent.with_instruction(formatted_instruction)
@@ -55,4 +57,4 @@ def get_user_profile(user_id: str):
     if user_id in user_profiles:
         return user_profiles[user_id]
     else:
-        raise HTTPException(status_code=404, detail="User not found") 
+        raise HTTPException(status_code=404, detail="User not found")

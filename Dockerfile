@@ -40,4 +40,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8080/api/v1/health', timeout=10)"
 
 # Run the application with gunicorn
-CMD ["gunicorn", "main:app", "--bind", "0.0.0.0:8080", "--worker-class", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "300", "--access-logfile", "-", "--error-logfile", "-"] 
+CMD ["gunicorn", "main:app", "--bind", "0.0.0.0:8080", "--worker-class", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "300", "--access-logfile", "-", "--error-logfile", "-"]

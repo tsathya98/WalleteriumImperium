@@ -5,6 +5,7 @@ Contains prompts that generate a rich, structured JSON output.
 
 from config.constants import TRANSACTION_CATEGORIES
 
+
 def create_simplified_prompt(media_type: str) -> str:
     """
     Creates a simplified, powerful prompt that guides the LLM to produce a clean
@@ -74,4 +75,4 @@ Now, analyze the provided receipt and generate the JSON output in the exact same
 4.  **Categorization:** Use one of these categories: {', '.join(TRANSACTION_CATEGORIES)}
 5.  **Accuracy:** Ensure all numbers are correct. `amount` must be the final total.
 6.  **Completeness:** If a field is not on the receipt, use `null` or a sensible default.
-""" 
+"""

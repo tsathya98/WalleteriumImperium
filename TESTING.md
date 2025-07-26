@@ -274,7 +274,7 @@ pm.test("Warranty detection for electronics", function () {
 // Test category validation
 pm.test("Valid category from predefined list", function () {
     const validCategories = [
-        "Groceries", "Restaurant, fast-food", "Electronics", 
+        "Groceries", "Restaurant, fast-food", "Electronics",
         "Pharmacy", "Health & beauty", "Clothes & shoes"
         // ... (25+ categories)
     ];
@@ -402,23 +402,23 @@ for i in {1..30}; do
 
   if [ "$STATUS" = "completed" ]; then
       echo "  ✅ Analysis completed!"
-      
+
       # Validate enhanced output
       VENDOR_TYPE=$(echo $STATUS_RESPONSE | jq -r .result.metadata.vendor_type)
       CONFIDENCE=$(echo $STATUS_RESPONSE | jq -r .result.metadata.confidence)
       ITEMS_COUNT=$(echo $STATUS_RESPONSE | jq '.result.items | length')
-      
+
       echo "  📊 Vendor Type: $VENDOR_TYPE"
       echo "  🎯 Confidence: $CONFIDENCE"
       echo "  📝 Items Count: $ITEMS_COUNT"
-      
+
       # Check for warranties if electronics
       CATEGORY=$(echo $STATUS_RESPONSE | jq -r .result.category)
       if [ "$CATEGORY" = "Electronics" ]; then
         WARRANTY=$(echo $STATUS_RESPONSE | jq -r .result.warranty)
         echo "  🛡️  Warranty Detected: $WARRANTY"
       fi
-      
+
     break
   elif [ "$STATUS" = "failed" ]; then
       echo "  ❌ Analysis failed!"
@@ -590,7 +590,7 @@ curl -X POST "http://localhost:8080/api/v1/receipts/upload" \
       "error": "Invalid category: 'Unknown Food' not in predefined list"
     },
     {
-      "layer": "mathematical", 
+      "layer": "mathematical",
       "error": "Total mismatch: calculated $45.50 vs declared $46.00"
     }
   ]
@@ -659,7 +659,7 @@ curl http://localhost:8080/api/v1/health | jq .metrics
 
 ### **Core Functionality Testing**
 - [ ] Restaurant receipt → single object output
-- [ ] Supermarket receipt → item breakdown output  
+- [ ] Supermarket receipt → item breakdown output
 - [ ] Electronics receipt → warranty detection
 - [ ] Service receipt → subscription detection
 - [ ] Video analysis → multi-frame processing

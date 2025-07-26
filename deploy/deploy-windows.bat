@@ -119,4 +119,4 @@ echo   API Docs: %SERVICE_URL%/docs
 echo   Receipt Upload: %SERVICE_URL%/api/v1/receipts/upload
 
 echo 🎉 WalleteriumImperium is now live at: %SERVICE_URL%
-pause 
+pause

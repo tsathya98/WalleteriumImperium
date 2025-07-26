@@ -111,4 +111,4 @@ echo -e "${BLUE}🏥 Testing health endpoint...${NC}"
 sleep 10  # Wait for service to be ready
 curl -s "$SERVICE_URL/api/v1/health" | python3 -m json.tool || echo -e "${YELLOW}⚠️ Health check failed - service might still be starting${NC}"
 
-echo -e "${GREEN}🎉 WalleteriumImperium is now live at: $SERVICE_URL${NC}" 
+echo -e "${GREEN}🎉 WalleteriumImperium is now live at: $SERVICE_URL${NC}"

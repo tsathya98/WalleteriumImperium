@@ -5,11 +5,18 @@ from google.adk.tools import tool
 from typing import Dict, Any, List
 
 from .prompts import ONBOARDING_INSTRUCTION
-from .schemas import UserProfile, UserAssets, RealEstateAsset, GoldAsset, StockAsset, RecurringBill
+from .schemas import (
+    UserProfile,
+    RealEstateAsset,
+    GoldAsset,
+    StockAsset,
+    RecurringBill,
+)
 
 # In-memory "database" for user profiles.
 # In a production environment, this would be replaced with a real database like Firestore.
 user_profiles: Dict[str, UserProfile] = {}
+
 
 @tool
 def update_user_profile(
@@ -48,11 +55,11 @@ def update_user_profile(
         profile.has_invested_before = has_invested_before
     if investment_interests is not None:
         profile.investment_interests.extend(investment_interests)
-    
+
     if real_estate_assets:
         for asset_data in real_estate_assets:
             profile.assets.real_estate.append(RealEstateAsset(**asset_data))
-            
+
     if gold_assets:
         for asset_data in gold_assets:
             profile.assets.gold.append(GoldAsset(**asset_data))
@@ -60,7 +67,7 @@ def update_user_profile(
     if stock_assets:
         for asset_data in stock_assets:
             profile.assets.stocks.append(StockAsset(**asset_data))
-    
+
     if recurring_bills:
         for bill_data in recurring_bills:
             profile.recurring_bills.append(RecurringBill(**bill_data))
@@ -74,4 +81,4 @@ onboarding_agent = Agent(
     description="A conversational agent for onboarding users and creating financial profiles.",
     instruction=ONBOARDING_INSTRUCTION,
     tools=[update_user_profile],
-) 
+)

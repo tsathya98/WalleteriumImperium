@@ -26,7 +26,7 @@ class SimplifiedReceiptAgent:
         self.project_id = settings.GOOGLE_CLOUD_PROJECT_ID
         self.location = settings.VERTEX_AI_LOCATION or "us-central1"
         self.model_name = "gemini-2.5-flash"
-        
+
         print("🤖 Initializing Simplified Receipt Agent")
         self._initialize_model()
 
@@ -34,7 +34,7 @@ class SimplifiedReceiptAgent:
         """Initializes the Vertex AI model without complex schema enforcement."""
         try:
             vertexai.init(project=self.project_id, location=self.location)
-            
+
             generation_config = GenerationConfig(
                 temperature=0.1,
                 top_p=0.8,
@@ -43,8 +43,7 @@ class SimplifiedReceiptAgent:
             )
 
             self.model = GenerativeModel(
-                model_name=self.model_name,
-                generation_config=generation_config
+                model_name=self.model_name, generation_config=generation_config
             )
             print("✅ Agent ready!")
 
@@ -52,32 +51,35 @@ class SimplifiedReceiptAgent:
             print(f"❌ Failed to initialize model: {e}")
             raise
 
-    def analyze_receipt(self, media_bytes: bytes, media_type: str, user_id: str) -> Dict[str, Any]:
+    def analyze_receipt(
+        self, media_bytes: bytes, media_type: str, user_id: str
+    ) -> Dict[str, Any]:
         """Analyzes a receipt using a powerful prompt and robust JSON parsing."""
         start_time = datetime.datetime.utcnow()
-        
+
         print(f"🧠 Analyzing {media_type} for user: {user_id}")
 
         try:
             media_data, mime_type = self._prepare_media(media_bytes, media_type)
             prompt = create_simplified_prompt(media_type)
-            
+
             print("🤖 Calling Gemini with simplified, direct prompt...")
-            response = self.model.generate_content([
-                prompt,
-                Part.from_data(data=media_data, mime_type=mime_type)
-            ])
+            response = self.model.generate_content(
+                [prompt, Part.from_data(data=media_data, mime_type=mime_type)]
+            )
 
             # Robustly extract the JSON from the model's response
             ai_json = self._extract_json_from_response(response.text)
             if not ai_json:
-                raise ValueError("Could not find a valid JSON object in the AI response.")
+                raise ValueError(
+                    "Could not find a valid JSON object in the AI response."
+                )
 
             # Use Pydantic for validation and data hydration
             receipt_analysis = ReceiptAnalysis.model_validate(ai_json)
-            
+
             processing_time = (datetime.datetime.utcnow() - start_time).total_seconds()
-            
+
             # Update metadata with our calculated processing time
             if receipt_analysis.metadata:
                 receipt_analysis.metadata.processing_time_seconds = processing_time
@@ -88,7 +90,7 @@ class SimplifiedReceiptAgent:
             return {
                 "status": "success",
                 "data": receipt_analysis.dict(),
-                "processing_time": processing_time
+                "processing_time": processing_time,
             }
 
         except Exception as e:
@@ -121,21 +123,23 @@ class SimplifiedReceiptAgent:
         """Prepares media, including resizing large images."""
         if media_type == "image":
             image = Image.open(io.BytesIO(media_bytes))
-            
+
             max_size = (2048, 2048)
             if image.size[0] > max_size[0] or image.size[1] > max_size[1]:
                 image.thumbnail(max_size, Image.Resampling.LANCZOS)
-                
+
                 output_buffer = io.BytesIO()
                 image.save(output_buffer, format="JPEG", quality=90)
                 media_bytes = output_buffer.getvalue()
 
             return media_bytes, "image/jpeg"
-        
+
         return media_bytes, "video/mp4"
+
 
 # Singleton instance
 _agent = None
+
 
 def get_receipt_scanner_agent() -> "SimplifiedReceiptAgent":
     """Provides a singleton instance of the agent."""

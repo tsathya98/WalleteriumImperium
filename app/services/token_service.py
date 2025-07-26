@@ -4,8 +4,6 @@ Manages token-based processing workflow with hybrid agentic agent
 """
 
 import asyncio
-import uuid
-from datetime import datetime, timedelta
 from typing import Dict, Optional, Any
 
 from app.core.config import get_settings
@@ -72,7 +70,9 @@ class TokenService:
                 return None
             return token_data.dict()
         except Exception as e:
-            logger.error(f"❌ Failed to get token status for {token}: {e}", exc_info=True)
+            logger.error(
+                f"❌ Failed to get token status for {token}: {e}", exc_info=True
+            )
             raise
 
     async def _process_receipt_async(
@@ -86,15 +86,21 @@ class TokenService:
 
             if ai_result["status"] == "success":
                 receipt_analysis = ReceiptAnalysis(**ai_result["data"])
-                
+
                 await self._firestore_service.save_receipt(receipt_analysis)
-                logger.info(f"✅ Receipt saved to Firestore: {receipt_analysis.receipt_id}")
+                logger.info(
+                    f"✅ Receipt saved to Firestore: {receipt_analysis.receipt_id}"
+                )
 
                 await self._firestore_service.update_token_status(
                     token,
                     status=ProcessingStatus.COMPLETED,
                     result=receipt_analysis,
-                    progress={"stage": "completed", "percentage": 100.0, "message": "Processing complete"},
+                    progress={
+                        "stage": "completed",
+                        "percentage": 100.0,
+                        "message": "Processing complete",
+                    },
                 )
                 logger.info(f"✅ Sync receipt processing completed for token: {token}")
             else:
@@ -102,12 +108,18 @@ class TokenService:
                 raise ValueError(f"Agent failed: {error_message}")
 
         except Exception as e:
-            logger.error(f"❌ Async processing failed for token {token}: {e}", exc_info=True)
+            logger.error(
+                f"❌ Async processing failed for token {token}: {e}", exc_info=True
+            )
             await self._firestore_service.update_token_status(
                 token,
                 status=ProcessingStatus.FAILED,
                 error={"code": "processing_error", "message": str(e)},
-                progress={"stage": "failed", "percentage": 100.0, "message": "Processing failed"},
+                progress={
+                    "stage": "failed",
+                    "percentage": 100.0,
+                    "message": "Processing failed",
+                },
             )
 
     async def retry_failed_processing(self, token: str) -> bool:
