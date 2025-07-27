@@ -5,11 +5,8 @@
 
 Here's a quick showcase of what Walleterium Imperium can do. These images highlight the core features and user interactions.
 
-### Onboarding and Profile Creation
 ![Onboarding-1](docs/git_artifacts/1.jpg)
 ![Onboarding-2](docs/git_artifacts/2.jpg)
-
-### Receipt Scanning and Analysis
 ![Receipt-1](docs/git_artifacts/3.jpg)
 ![Receipt-2](docs/git_artifacts/4.jpg)
 ![Receipt-3](docs/git_artifacts/5.jpg)
