@@ -39,19 +39,18 @@ async def health_check(request: Request):
         )
 
         # Get individual service health
-        firestore_health = await request.app.state.firestore.health_check()
+        firestore_health = await request.app.state.firestore_service.health_check()
         token_service_health = await request.app.state.token_service.health_check()
 
         # Get basic metrics
-        import psutil
         import time
 
-        # Calculate basic system metrics
+        # Calculate basic system metrics  
         current_time = time.time()
         uptime_seconds = current_time - getattr(
-            request.app.state.metrics, "_start_time", current_time
+            request.app.state, "_start_time", current_time
         )
-        memory_usage_mb = psutil.Process().memory_info().rss / 1024 / 1024
+        memory_usage_mb = _get_memory_usage_mb()
 
         # Determine overall status
         firestore_status = firestore_health.get("status", "unknown")
@@ -102,7 +101,7 @@ async def detailed_health_check(request: Request):
     """
     try:
         # Get detailed health from all services
-        firestore_details = await request.app.state.firestore.health_check()
+        firestore_details = await request.app.state.firestore_service.health_check()
         token_service_details = await request.app.state.token_service.health_check()
 
         # Skip enhanced agent health check temporarily due to schema initialization issue
@@ -149,7 +148,7 @@ async def readiness_check(request: Request):
     """
     try:
         # Check if critical services are ready
-        firestore_ready = (await request.app.state.firestore.health_check()).get(
+        firestore_ready = (await request.app.state.firestore_service.health_check()).get(
             "status"
         ) == "healthy"
 
