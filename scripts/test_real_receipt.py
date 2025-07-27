@@ -151,7 +151,6 @@ def analyze_real_receipt(media_path: str, user_id: str = "real_test_user"):
                 print(f"🔄 Recurring: {result.get('recurring', False)}")
                 print(f"🛡️ Warranty: {result.get('warranty', False)}")
 
-
                 end_time = time.time()
                 print(f"\n⏱️ Total time taken: {end_time - start_time:.2f} seconds")
 

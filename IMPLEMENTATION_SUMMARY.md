@@ -60,7 +60,7 @@ agents/receipt_scanner/
 
 ### **Performance Improvements**
 - ⚡ **40% faster** than multi-agent approach
-- 💰 **70% more cost-effective** than agent orchestration  
+- 💰 **70% more cost-effective** than agent orchestration
 - 🚀 **33% faster uploads** with multipart vs base64
 
 ### **Data Quality Improvements**
@@ -80,7 +80,7 @@ agents/receipt_scanner/
 ```json
 {
     "receipt_id": "user123_1640995200",
-    "place": "Super Electronics Store", 
+    "place": "Super Electronics Store",
     "time": "2024-07-28T15:45:00Z",
     "amount": 1058.98,
     "category": "Electronics",
@@ -122,4 +122,4 @@ The system is now:
 - ✅ **Well-documented** with clear separation of concerns
 - ✅ **Future-proof** with RAG-optimized descriptions
 
-**Built with ❤️ using Hybrid Agentic AI Architecture** 
+**Built with ❤️ using Hybrid Agentic AI Architecture**

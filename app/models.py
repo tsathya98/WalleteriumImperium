@@ -73,7 +73,9 @@ class RecurringDetails(BaseModel):
     """Recurring/subscription details for items or overall receipt"""
 
     frequency: str = Field(..., description="Billing frequency (monthly, yearly, etc.)")
-    nextBillingDate: Optional[str] = Field(None, description="Next billing date (ISO 8601)")
+    nextBillingDate: Optional[str] = Field(
+        None, description="Next billing date (ISO 8601)"
+    )
     subscriptionType: Optional[str] = Field(None, description="Type of subscription")
     autoRenew: Optional[bool] = Field(None, description="Auto-renewal status")
 
@@ -91,25 +93,33 @@ class RecurringDetails(BaseModel):
 
 class ItemDetail(BaseModel):
     """Detailed model for a single item on a receipt"""
-    
+
     name: str = Field(..., description="Item name")
     quantity: float = Field(..., description="Item quantity")
     unit_price: Optional[float] = Field(None, description="Price per unit")
     total_price: float = Field(..., description="Total price for this item")
     category: Optional[str] = Field(None, description="Assigned category for this item")
     description: Optional[str] = Field(None, description="Detailed item description")
-    
+
     # Enhanced warranty and subscription handling
-    warranty: Optional[WarrantyDetails] = Field(None, description="Warranty details if applicable")
-    recurring: Optional[RecurringDetails] = Field(None, description="Subscription details if applicable")
+    warranty: Optional[WarrantyDetails] = Field(
+        None, description="Warranty details if applicable"
+    )
+    recurring: Optional[RecurringDetails] = Field(
+        None, description="Subscription details if applicable"
+    )
 
 
 class ProcessingMetadata(BaseModel):
     """AI processing metadata"""
-    
-    vendor_type: str = Field(..., description="AI-classified vendor type (RESTAURANT, SUPERMARKET, etc.)")
+
+    vendor_type: str = Field(
+        ..., description="AI-classified vendor type (RESTAURANT, SUPERMARKET, etc.)"
+    )
     confidence: str = Field(..., description="AI confidence level (high, medium, low)")
-    processing_time_seconds: Optional[float] = Field(None, description="Processing time in seconds")
+    processing_time_seconds: Optional[float] = Field(
+        None, description="Processing time in seconds"
+    )
     model_version: str = Field(..., description="AI model version used")
 
 
@@ -119,7 +129,9 @@ class ReceiptAnalysis(BaseModel):
 
     # Core required fields
     receipt_id: str = Field(..., description="Unique receipt identifier")
-    place: str = Field(..., description="Store or merchant name where transaction occurred")
+    place: str = Field(
+        ..., description="Store or merchant name where transaction occurred"
+    )
     time: str = Field(..., description="Transaction timestamp (ISO 8601)")
     amount: float = Field(..., ge=0, description="Transaction amount (positive)")
     transactionType: Optional[TransactionType] = Field(
@@ -128,21 +140,35 @@ class ReceiptAnalysis(BaseModel):
 
     # Enhanced categorization and description
     category: Optional[str] = Field(None, description="Overall transaction category")
-    description: Optional[str] = Field(None, description="Detailed transaction description")
-    importance: Optional[ImportanceLevel] = Field(None, description="Transaction importance level")
+    description: Optional[str] = Field(
+        None, description="Detailed transaction description"
+    )
+    importance: Optional[ImportanceLevel] = Field(
+        None, description="Transaction importance level"
+    )
 
     # Enhanced warranty and subscription handling (top-level summary)
-    warranty: Optional[WarrantyDetails] = Field(None, description="Warranty summary if any items have warranties")
-    recurring: Optional[RecurringDetails] = Field(None, description="Subscription summary if this is a recurring transaction")
+    warranty: Optional[WarrantyDetails] = Field(
+        None, description="Warranty summary if any items have warranties"
+    )
+    recurring: Optional[RecurringDetails] = Field(
+        None, description="Subscription summary if this is a recurring transaction"
+    )
 
     # Universal itemization - always present
-    items: List[ItemDetail] = Field(default=[], description="Detailed list of items from the receipt")
+    items: List[ItemDetail] = Field(
+        default=[], description="Detailed list of items from the receipt"
+    )
 
     # AI processing metadata
-    metadata: Optional[ProcessingMetadata] = Field(None, description="AI processing metadata")
+    metadata: Optional[ProcessingMetadata] = Field(
+        None, description="AI processing metadata"
+    )
 
     # Legacy fields for backward compatibility
-    processing_time: Optional[float] = Field(None, description="Processing time in seconds (legacy)")
+    processing_time: Optional[float] = Field(
+        None, description="Processing time in seconds (legacy)"
+    )
 
     @field_validator("time")
     @classmethod

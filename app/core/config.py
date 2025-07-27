@@ -68,15 +68,15 @@ class Settings(BaseSettings):
     @classmethod
     def validate_log_level(cls, v) -> str:
         allowed = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-        
+
         # Handle various input types gracefully
         if isinstance(v, list):
             v = v[0] if v else "INFO"
-        
+
         # Convert to string if needed
         if not isinstance(v, str):
             v = str(v)
-        
+
         # Validate and return uppercase
         v_upper = v.upper()
         if v_upper not in allowed:

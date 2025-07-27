@@ -12,7 +12,7 @@ Deploy your intelligent receipt scanner with **Gemini 2.5 Flash** to Google Clou
 ### ✅ **Required APIs**
 The deployment script will automatically enable these, but verify they're available:
 - Cloud Run API
-- Artifact Registry API  
+- Artifact Registry API
 - Vertex AI API
 - Firestore API
 - Cloud Build API
@@ -212,7 +212,7 @@ curl -X POST "https://your-service-url/api/v1/receipts/upload" \
 gcloud logs tail projects/$PROJECT_ID/logs/run.googleapis.com%2Fstdout \
     --log-filter='resource.labels.service_name="walleterium-receipt-scanner"'
 
-# Historical logs  
+# Historical logs
 gcloud logs read projects/$PROJECT_ID/logs/run.googleapis.com%2Fstdout \
     --log-filter='resource.labels.service_name="walleterium-receipt-scanner"' \
     --limit=100
@@ -240,7 +240,7 @@ The deployment sets these automatically:
 
 ### **Resource Limits**
 - **Memory**: 2 GiB
-- **CPU**: 1 vCPU  
+- **CPU**: 1 vCPU
 - **Timeout**: 300 seconds
 - **Concurrency**: 10 requests per instance
 - **Max Instances**: 10
@@ -313,7 +313,7 @@ curl https://your-service-url/api/v1/health/vertex-ai
 
 **Estimated Monthly Cost (1000 receipts):**
 - Vertex AI: ~$5
-- Cloud Run: ~$2  
+- Cloud Run: ~$2
 - Firestore: ~$1
 - **Total**: ~$8/month
 
@@ -321,4 +321,4 @@ curl https://your-service-url/api/v1/health/vertex-ai
 
 **🎉 Your intelligent receipt scanner with Gemini 2.5 Flash is now live on Cloud Run!**
 
-For support or questions, check the logs or create an issue in the repository. 
+For support or questions, check the logs or create an issue in the repository.

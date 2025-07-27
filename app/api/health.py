@@ -39,25 +39,29 @@ async def health_check(request: Request):
         )
 
         # Get individual service health
-        firestore_health = await request.app.state.firestore.health_check()
+        firestore_health = await request.app.state.firestore_service.health_check()
         token_service_health = await request.app.state.token_service.health_check()
 
         # Get basic metrics
-        import psutil
         import time
-        
-        # Calculate basic system metrics
+
+        # Calculate basic system metrics  
         current_time = time.time()
-        uptime_seconds = current_time - getattr(request.app.state.metrics, '_start_time', current_time)
-        memory_usage_mb = psutil.Process().memory_info().rss / 1024 / 1024
+        uptime_seconds = current_time - getattr(
+            request.app.state, "_start_time", current_time
+        )
+        memory_usage_mb = _get_memory_usage_mb()
 
         # Determine overall status
         firestore_status = firestore_health.get("status", "unknown")
         token_service_status = token_service_health.get("status", "unknown")
-        
+
         overall_status = (
             "healthy"
-            if all(status == "healthy" for status in [firestore_status, token_service_status])
+            if all(
+                status == "healthy"
+                for status in [firestore_status, token_service_status]
+            )
             else "unhealthy"
         )
 
@@ -97,7 +101,7 @@ async def detailed_health_check(request: Request):
     """
     try:
         # Get detailed health from all services
-        firestore_details = await request.app.state.firestore.health_check()
+        firestore_details = await request.app.state.firestore_service.health_check()
         token_service_details = await request.app.state.token_service.health_check()
 
         # Skip enhanced agent health check temporarily due to schema initialization issue
@@ -105,7 +109,7 @@ async def detailed_health_check(request: Request):
         agent_health = {
             "status": "healthy",
             "model": "gemini-2.5-flash",
-            "note": "Health check disabled due to schema initialization issue"
+            "note": "Health check disabled due to schema initialization issue",
         }
 
         return {
@@ -144,13 +148,13 @@ async def readiness_check(request: Request):
     """
     try:
         # Check if critical services are ready
-        firestore_ready = (await request.app.state.firestore.health_check()).get(
+        firestore_ready = (await request.app.state.firestore_service.health_check()).get(
             "status"
         ) == "healthy"
-        
-        token_service_ready = (await request.app.state.token_service.health_check()).get(
-            "status"
-        ) == "healthy"
+
+        token_service_ready = (
+            await request.app.state.token_service.health_check()
+        ).get("status") == "healthy"
 
         if firestore_ready and token_service_ready:
             return {
@@ -170,7 +174,9 @@ async def readiness_check(request: Request):
                     "timestamp": datetime.utcnow().isoformat(),
                     "services": {
                         "firestore": "ready" if firestore_ready else "not_ready",
-                        "token_service": "ready" if token_service_ready else "not_ready",
+                        "token_service": "ready"
+                        if token_service_ready
+                        else "not_ready",
                         "enhanced_agent": "ready",
                     },
                 },
@@ -181,9 +187,9 @@ async def readiness_check(request: Request):
         return JSONResponse(
             status_code=503,
             content={
-                "status": "not_ready", 
+                "status": "not_ready",
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             },
         )
 

@@ -51,4 +51,4 @@ dist/
 *.egg-info/
 
 # Logs
-*.log 
+*.log

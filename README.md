@@ -10,7 +10,7 @@ Intelligent receipt processing supporting both images and videos with guaranteed
 **WalleteriumImperium** is a production-ready receipt analysis system featuring a sophisticated **Asynchronous Architecture** that combines the power of AI reasoning with robust cloud infrastructure:
 
 - **🧠 Advanced AI Integration**: Gemini 2.5 Flash with optimized prompts for consistent results
-- **📊 Smart Categorization**: 25+ predefined categories with intelligent classification  
+- **📊 Smart Categorization**: 25+ predefined categories with intelligent classification
 - **🔄 Asynchronous Processing**: Non-blocking architecture optimized for Cloud Run deployment
 - **📸 Image Analysis**: Fast processing with intelligent resizing (10-30s)
 - **🎥 Video Analysis**: Multi-frame analysis for challenging conditions (20-60s)
@@ -18,6 +18,13 @@ Intelligent receipt processing supporting both images and videos with guaranteed
 - **🔍 Advanced Validation**: Pydantic models with mathematical verification
 - **☁️ Cloud-Native**: Designed for Google Cloud Run with auto-scaling
 - **🔥 Firestore Integration**: Persistent storage with real-time data access
+- **🤖 Receipt Scanning Agent**: A sophisticated agent that can scan and process receipts from images and videos.
+
+### Onboarding Agent
+
+The Onboarding Agent is a conversational AI designed to create a comprehensive user profile by understanding their financial habits, goals, and risk appetite. It uses a friendly, multi-lingual, and adaptive conversational approach to gather necessary details for personalizing the user's experience.
+
+For more details, see the [Onboarding Agent README](agents/onboarding_agent/README.md).
 
 ---
 
@@ -39,7 +46,7 @@ graph TB
     I --> J[💾 Firestore Receipt Storage]
     J --> K[📊 Status Update]
     K --> L[📱 Client Polling]
-    
+
     style E fill:#e1f5fe
     style J fill:#f3e5f5
     style G fill:#fff3e0
@@ -64,7 +71,7 @@ graph TB
 Based on extensive testing and the application's characteristics, Google Cloud Run provides optimal performance:
 
 1. **Serverless Auto-Scaling**: Handles traffic spikes automatically
-2. **Pay-per-Request**: Cost-effective for variable workloads  
+2. **Pay-per-Request**: Cost-effective for variable workloads
 3. **Async-Optimized**: Perfect for our non-blocking architecture
 4. **Integrated with GCP**: Seamless Vertex AI and Firestore connectivity
 5. **Cold Start Friendly**: Firestore ensures no data loss during scaling
@@ -117,7 +124,7 @@ Our application uses Firestore for persistent, scalable data storage:
 │       ├── result: {...}
 │       └── timestamps: {...}
 │
-└── 📄 receipts/                   # Receipt storage  
+└── 📄 receipts/                   # Receipt storage
     └── {receipt_id}
         ├── place: "Restaurant Name"
         ├── amount: 49.52
@@ -146,13 +153,13 @@ token = await firestore_service.create_token(user_id)
 # 2. Background Processing (Async)
 async def process_receipt_async():
     result = agent.analyze_receipt(media_bytes, media_type, user_id)
-    
+
     # Save analysis to Firestore
     await firestore_service.save_receipt(receipt_analysis)
-    
+
     # Update token status
     await firestore_service.update_token_status(
-        token, 
+        token,
         status=ProcessingStatus.COMPLETED,
         result=receipt_analysis
     )
@@ -268,21 +275,21 @@ Our agent follows a streamlined approach optimized for production:
 ```python
 class SimplifiedReceiptAgent:
     """Production-optimized receipt analysis agent"""
-    
+
     def analyze_receipt(self, media_bytes: bytes, media_type: str, user_id: str):
         # 1. Prepare media (with optional optimization)
         media_data, mime_type = self._prepare_media(media_bytes, media_type)
-        
+
         # 2. Use engineered prompt for consistent results
         prompt = create_simplified_prompt(media_type)
-        
+
         # 3. Single API call to Gemini
         response = self.model.generate_content([prompt, media_data])
-        
+
         # 4. Extract and validate JSON
         ai_json = self._extract_json_from_response(response.text)
         receipt_analysis = ReceiptAnalysis.model_validate(ai_json)
-        
+
         return {"status": "success", "data": receipt_analysis.dict()}
 ```
 
@@ -295,7 +302,7 @@ def create_simplified_prompt(media_type: str) -> str:
     return f"""
     Analyze this {media_type} and extract all visible information.
     Your response MUST be a single, valid JSON object.
-    
+
     **CRITICAL INSTRUCTIONS:**
     1. JSON ONLY: Your entire output must be the JSON object.
     2. Transaction Type: MUST be either "debit" or "credit". Default to "debit".
@@ -328,7 +335,7 @@ def create_simplified_prompt(media_type: str) -> str:
             "description": "Fresh fish ceviche with onions"
         },
         {
-            "name": "Lomo Saltado", 
+            "name": "Lomo Saltado",
             "quantity": 1,
             "unit_price": 25.00,
             "total_price": 25.00,
@@ -463,7 +470,7 @@ Ensure these services are enabled in your project:
 ```bash
 # Enable required services
 gcloud services enable run.googleapis.com
-gcloud services enable aiplatform.googleapis.com  
+gcloud services enable aiplatform.googleapis.com
 gcloud services enable firestore.googleapis.com
 
 # Create Firestore database (if not exists)
@@ -658,3 +665,60 @@ async def upload_receipt(...):
 
 *Built with ❤️ using FastAPI, Google Cloud, and modern async architecture*
 *Optimized for serverless deployment and enterprise scalability*
+
+## 🗺️ Holistic Multi-Agent Architecture (Google Cloud Hackathon View)
+```mermaid
+graph TD
+    subgraph Client_Devices
+        A1(Web_SPA)
+        A2(Mobile_App)
+        A3(Back_Office_Scripts)
+    end
+    subgraph FastAPI_Gateway
+        B(Async_API_Layer)
+        B -->|/api/v1/receipts| RS[Receipt_Scanner_Agent]
+        B -->|/api/v1/onboarding| OB[Onboarding_Agent]
+        B -.->|/api/v1/health| HC[Health_Endpoints]
+    end
+    RS --> VAI[Vertex_AI_Gemini_2.5_Flash_Vision]
+    OB --> VAI
+    WB --> VAI
+    RS --> FS[(Firestore)]
+    OB --> FS
+    WB --> FS
+```
+
+### 🔀 Sequence Diagram – Receipt Scanner Agent
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Scanner
+    participant Gemini
+    participant Firestore
+    Client->>API: POST /api/v1/receipts/upload
+    API-->>Client: 202 Accepted + token
+    Note over API,Scanner: Background Task
+    API->>Scanner: analyze(media,user_id)
+    Scanner->>Gemini: generateContent(prompt,media)
+    Gemini-->>Scanner: JSON result
+    Scanner->>Firestore: save(receipt,token)
+    Client->>API: GET /api/v1/receipts/status/{token}
+    API->>Firestore: fetch(token)
+    API-->>Client: progress / final result
+```
+
+_The Onboarding Agent sequence is documented in `agents/onboarding_agent/README.md`._
+
+### 🧬 LLM Calls & Agent Configuration
+
+| Agent | Model | Calls / Turn | Tokens (in/out) | Vision |
+|-------|-------|-------------|-----------------|--------|
+| Onboarding | gemini-2.5-flash | 1 | 2k / 256 | No |
+| Receipt Scanner | gemini-2.5-flash | 1 | 4k / 512 | Yes |
+
+Each agent is powered by the Google **Agent Development Kit (ADK)** and exposes domain-specific **tools**. The FastAPI layer orchestrates tool execution, persists state in Firestore, and keeps every container stateless and Cloud-Run-friendly.
+
+### 🏅 Google Cloud Hackathon Notes
+
+This multi-agent architecture showcases the synergy between Vertex AI Gemini and Cloud Run. All diagrams and metrics are suitable for inclusion in your hackathon submission deck – feel free to reuse them! 🚀

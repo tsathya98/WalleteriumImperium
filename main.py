@@ -8,7 +8,6 @@ import os
 import sys
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict
 
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException
@@ -18,7 +17,8 @@ from fastapi.responses import JSONResponse
 # Add project root to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.api import receipts, health
+from app.api import receipts, health, transactions
+from app.api import onboarding as onboarding_api
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.services.firestore_service import FirestoreService
@@ -29,6 +29,7 @@ setup_logging(settings.LOG_LEVEL)
 
 # Global metrics collector
 from app.utils.monitoring import MetricsCollector
+
 metrics = MetricsCollector()
 
 
@@ -37,11 +38,11 @@ async def lifespan(app: FastAPI):
     """Lifespan manager for FastAPI application"""
     try:
         print("🚀 Starting Raseed Receipt Processor")
-        
+
         # Initialize Firestore service
         firestore_service = FirestoreService()
         await firestore_service.initialize()
-        app.state.firestore = firestore_service
+        app.state.firestore_service = firestore_service
 
         # Initialize Token service (SYNC VERSION)
         token_service = TokenService(firestore_service=firestore_service)
@@ -49,16 +50,16 @@ async def lifespan(app: FastAPI):
         app.state.token_service = token_service
 
         print("✅ All services initialized successfully")
-        
+
         yield
-        
+
     except Exception as e:
         print(f"❌ Failed to initialize services: {e}")
         raise
     finally:
         print("🛑 Shutting down services...")
         # Cleanup if needed
-        if hasattr(app.state, 'token_service'):
+        if hasattr(app.state, "token_service"):
             await app.state.token_service.shutdown()
 
 
@@ -86,16 +87,18 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
     """Log all requests for monitoring"""
     start_time = time.time()
-    
+
     # Process request
     response = await call_next(request)
-    
+
     # Calculate processing time
     process_time = time.time() - start_time
-    
+
     # Log request
-    print(f"📝 {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
-    
+    print(
+        f"📝 {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s"
+    )
+
     # Record metrics
     metrics.record_request(
         method=request.method,
@@ -103,7 +106,7 @@ async def log_requests(request: Request, call_next):
         status_code=response.status_code,
         duration=process_time,
     )
-    
+
     return response
 
 
@@ -137,6 +140,12 @@ async def general_exception_handler(request: Request, exc: Exception):
 # Include routers
 app.include_router(receipts.router, prefix="/api/v1/receipts", tags=["receipts"])
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
+app.include_router(
+    onboarding_api.router, prefix="/api/v1/onboarding", tags=["onboarding"]
+)
+app.include_router(
+    transactions.router, prefix="/api/v1", tags=["transactions"]
+)
 
 
 @app.get("/")
