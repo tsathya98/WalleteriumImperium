@@ -31,12 +31,9 @@ def save_user_profile_data(
     user_id: str,
     profile_data: dict
 ) -> dict:
-    """Save complete user profile data to Firestore"""
+    """Save complete user profile data to Firestore - all in one document"""
     try:
-        # Save to wallet_user_collection
-        user_doc_ref = firestore_service.client.collection("wallet_user_collection").document(user_id)
-        
-        # Prepare main profile data
+        # Prepare complete user data with all assets embedded
         user_data = {
             "uid": user_id,
             "last_seen": datetime.now().isoformat(),
@@ -47,28 +44,20 @@ def save_user_profile_data(
             "risk_appetite": profile_data.get("risk_appetite"),
             "investment_interests": profile_data.get("investment_interests", []),
             "has_invested_before": profile_data.get("has_invested_before"),
-            "recurring_bills": profile_data.get("recurring_bills", [])
+            "recurring_bills": profile_data.get("recurring_bills", []),
+            # Store all assets directly in the main document
+            "real_estate_assets": profile_data.get("real_estate_assets", []),
+            "gold_assets": profile_data.get("gold_assets", []),
+            "stock_assets": profile_data.get("stock_assets", []),
+            "vehicle_assets": profile_data.get("vehicle_assets", []),
+            "crypto_assets": profile_data.get("crypto_assets", []),
+            "updated_at": datetime.now().isoformat()
         }
         
-        # Save main profile (using sync method for hackathon speed)
+        # Save everything to main document (using sync method for hackathon speed)
         firestore_service.client.collection("wallet_user_collection").document(user_id).set(user_data, merge=True)
         
-        # Save assets to subcollection if present
-        assets_collection_ref = user_doc_ref.collection("user_assets")
-        
-        # Save different asset types
-        for asset_type in ['real_estate_assets', 'gold_assets', 'stock_assets', 'vehicle_assets', 'crypto_assets']:
-            assets = profile_data.get(asset_type, [])
-            for asset in assets:
-                asset_doc = {
-                    "user_id": user_id,
-                    "asset_type": asset_type.replace('_assets', ''),
-                    "data": asset,
-                    "created_at": datetime.now().isoformat()
-                }
-                assets_collection_ref.add(asset_doc)
-        
-        logger.info(f"Complete profile saved for user {user_id}")
+        logger.info(f"Complete profile with assets saved to main document for user {user_id}")
         return {"status": "success", "message": "Profile saved successfully"}
         
     except Exception as e:
@@ -80,9 +69,9 @@ def get_complete_user_profile(
     firestore_service: FirestoreService,
     user_id: str
 ) -> dict:
-    """Retrieve complete user profile including assets"""
+    """Retrieve complete user profile including assets - now from single document"""
     try:
-        # Get main profile
+        # Get complete profile from main document
         user_doc = firestore_service.client.collection("wallet_user_collection").document(user_id).get()
         
         if not user_doc.exists:
@@ -90,27 +79,8 @@ def get_complete_user_profile(
             
         profile = user_doc.to_dict()
         
-        # Get assets from subcollection
-        assets_ref = firestore_service.client.collection("wallet_user_collection").document(user_id).collection("user_assets")
-        assets_docs = list(assets_ref.stream())
-        
-        assets = {
-            "real_estate_assets": [],
-            "gold_assets": [],
-            "stock_assets": [],
-            "vehicle_assets": [],
-            "crypto_assets": []
-        }
-        
-        for doc in assets_docs:
-            asset_data = doc.to_dict()
-            asset_type = asset_data.get("asset_type", "")
-            asset_key = f"{asset_type}_assets"
-            if asset_key in assets:
-                assets[asset_key].append(asset_data.get("data", {}))
-        
-        profile.update(assets)
-        
+        # All data including assets is now in the main document
+        logger.info(f"Successfully retrieved complete profile for user {user_id}")
         return {"status": "success", "profile": profile}
         
     except Exception as e:

@@ -1,724 +1,282 @@
-# WalleteriumImperium - Enhanced AI Receipt Analysis System
 
-**Production-Ready FastAPI Application with Gemini 2.5 Flash & Google Cloud Integration**
-Intelligent receipt processing supporting both images and videos with guaranteed JSON output, Firestore persistence, and Cloud Run deployment.
+# Walleterium Imperium: AI-Powered Financial Wellness Platform
 
----
+**A Production-Ready, Multi-Agent Financial Assistant powered by FastAPI, Google Gemini, and Google Cloud**
 
-## 🎯 **System Overview**
-
-**WalleteriumImperium** is a production-ready receipt analysis system featuring a sophisticated **Asynchronous Architecture** that combines the power of AI reasoning with robust cloud infrastructure:
-
-- **🧠 Advanced AI Integration**: Gemini 2.5 Flash with optimized prompts for consistent results
-- **📊 Smart Categorization**: 25+ predefined categories with intelligent classification
-- **🔄 Asynchronous Processing**: Non-blocking architecture optimized for Cloud Run deployment
-- **📸 Image Analysis**: Fast processing with intelligent resizing (10-30s)
-- **🎥 Video Analysis**: Multi-frame analysis for challenging conditions (20-60s)
-- **⚡ Real-time API**: Token-based processing with Firestore persistence
-- **🔍 Advanced Validation**: Pydantic models with mathematical verification
-- **☁️ Cloud-Native**: Designed for Google Cloud Run with auto-scaling
-- **🔥 Firestore Integration**: Persistent storage with real-time data access
-- **🤖 Receipt Scanning Agent**: A sophisticated agent that can scan and process receipts from images and videos.
-
-### Onboarding Agent
-
-The Onboarding Agent is a conversational AI designed to create a comprehensive user profile by understanding their financial habits, goals, and risk appetite. It uses a friendly, multi-lingual, and adaptive conversational approach to gather necessary details for personalizing the user's experience.
-
-For more details, see the [Onboarding Agent README](agents/onboarding_agent/README.md).
+Walleterium Imperium is an intelligent, multi-agent platform designed to provide users with a seamless and conversational financial management experience. It goes beyond simple expense tracking by combining a friendly **Onboarding Agent** to build a personalized user profile with a powerful **Receipt Scanner Agent** to automate data entry.
 
 ---
 
-## 🏗️ **Cloud-Native Architecture**
+## 🌟 **Key Features & Business Value**
 
-### **Asynchronous Processing Pipeline**
-Our system is built with modern async/await patterns, making it highly efficient for serverless deployments:
+For users, Walleterium Imperium offers a frictionless way to take control of their finances. For businesses, it provides a scalable, cloud-native solution for building next-generation financial applications.
 
-```mermaid
-graph TB
-    A[📱 Client Request] --> B[🌐 FastAPI Endpoint]
-    B --> C[🎫 TokenService]
-    C --> D[🔥 Firestore Token Storage]
-    C --> E[⚡ Async Background Task]
-    E --> F[🤖 Receipt Agent]
-    F --> G[✨ Gemini 2.5 Flash]
-    G --> H[📝 Structured Response]
-    H --> I[✅ Validation Layer]
-    I --> J[💾 Firestore Receipt Storage]
-    J --> K[📊 Status Update]
-    K --> L[📱 Client Polling]
-
-    style E fill:#e1f5fe
-    style J fill:#f3e5f5
-    style G fill:#fff3e0
-```
-
-### **Key Architectural Benefits**
-
-| **Feature** | **Benefit** | **Cloud Run Impact** |
-|-------------|-------------|---------------------|
-| **Async/Await** | Non-blocking I/O operations | Higher concurrency per instance |
-| **Firestore Integration** | Persistent, scalable storage | No data loss on cold starts |
-| **Background Tasks** | Immediate response to clients | Better user experience |
-| **Stateless Design** | No local state management | Perfect for auto-scaling |
-| **Health Checks** | Reliable service monitoring | Automatic failover |
+| **Feature** | **User Benefit** | **Business Value** |
+|-------------|------------------|--------------------|
+| **Conversational Onboarding** | A friendly, engaging way to set up a financial profile without boring forms. | Higher user engagement and retention from day one. |
+| **AI-Powered Persona Profiling** | The app understands if the user is a `Budgetor`, `Investor`, `Explorer`, etc., and tailors its advice. | Enables hyper-personalized user experiences and targeted product offerings. |
+| **Automated Receipt Scanning** | Instantly digitize receipts from images or videos, eliminating manual entry. | Reduces user friction and provides clean, structured data for analysis. |
+| **Cloud-Native & Scalable** | Built on Google Cloud Run to handle millions of users automatically. | Low operational overhead and a cost-effective, pay-per-use model. |
+| **Secure & Persistent** | User data is securely stored and managed in Google Firestore. | Ensures data integrity, privacy, and reliability. |
 
 ---
 
-## 🚀 **Google Cloud Run Deployment**
+## 🏗️ **System Architecture: A Technical Deep Dive**
 
-### **Why Cloud Run is Perfect for This Application**
+Walleterium Imperium is built on a modern, decoupled, and scalable architecture. It uses a FastAPI backend that serves as a gateway to two independent AI agents.
 
-Based on extensive testing and the application's characteristics, Google Cloud Run provides optimal performance:
+### **High-Level System Diagram**
 
-1. **Serverless Auto-Scaling**: Handles traffic spikes automatically
-2. **Pay-per-Request**: Cost-effective for variable workloads
-3. **Async-Optimized**: Perfect for our non-blocking architecture
-4. **Integrated with GCP**: Seamless Vertex AI and Firestore connectivity
-5. **Cold Start Friendly**: Firestore ensures no data loss during scaling
+This diagram shows the main components and how they interact within the Google Cloud ecosystem.
 
-### **Deployment Commands**
-
-Set up your environment:
-```bash
-# Authenticate with Google Cloud
-gcloud auth login
-gcloud auth application-default login
-
-# Set your project
-gcloud config set project YOUR_PROJECT_ID
-
-# Verify Firestore is enabled
-gcloud firestore databases list
-```
-
-Deploy to Cloud Run:
-```bash
-# Build and deploy in one command
-gcloud run deploy walleterium-imperium \
-  --source . \
-  --allow-unauthenticated \
-  --set-env-vars=GOOGLE_CLOUD_PROJECT_ID=YOUR_PROJECT_ID \
-  --set-env-vars=VERTEX_AI_LOCATION=us-central1 \
-  --region=us-central1 \
-  --memory=2Gi \
-  --cpu=2 \
-  --max-instances=10
-```
-
----
-
-## 🔥 **Firestore Integration Deep Dive**
-
-### **Data Storage Strategy**
-
-Our application uses Firestore for persistent, scalable data storage:
-
-#### **Collections Structure**
-```
-📁 Firestore Database
-├── 🎫 processing_tokens/          # Token management
-│   └── {token_id}
-│       ├── status: "completed"
-│       ├── user_id: "user123"
-│       ├── progress: {...}
-│       ├── result: {...}
-│       └── timestamps: {...}
-│
-└── 📄 receipts/                   # Receipt storage
-    └── {receipt_id}
-        ├── place: "Restaurant Name"
-        ├── amount: 49.52
-        ├── items: [...]
-        ├── metadata: {...}
-        └── timestamps: {...}
-```
-
-#### **Key Benefits of Firestore Integration**
-
-1. **Data Persistence**: Receipt data survives Cloud Run cold starts and restarts
-2. **Real-time Updates**: Clients can poll for processing status in real-time
-3. **Scalability**: Automatically scales with your application usage
-4. **Security**: Built-in authentication and security rules
-5. **Cost-Effective**: Pay only for reads/writes/storage used
-
-### **Processing Flow with Persistence**
-
-```python
-# Example: How data flows through the system
-
-# 1. Token Creation (Immediate Response)
-token = await firestore_service.create_token(user_id)
-# → Client gets immediate response with token
-
-# 2. Background Processing (Async)
-async def process_receipt_async():
-    result = agent.analyze_receipt(media_bytes, media_type, user_id)
-
-    # Save analysis to Firestore
-    await firestore_service.save_receipt(receipt_analysis)
-
-    # Update token status
-    await firestore_service.update_token_status(
-        token,
-        status=ProcessingStatus.COMPLETED,
-        result=receipt_analysis
-    )
-
-# 3. Client Polling (Real-time Updates)
-status = await firestore_service.get_token(token)
-# → Client receives current status and results
-```
-
-### **Sequence of Events**
-
-Here is a step-by-step visualization of the entire process from upload to result:
-
-```mermaid
-sequenceDiagram
-    participant Client as 📱 Client<br>(Flutter/Browser)
-    participant FastAPI as 🌐 FastAPI Backend<br>(/upload endpoint)
-    participant TokenService as 🎫 Token Service
-    participant VertexAIService as 🤖 Vertex AI Service
-    participant Gemini as ✨ Gemini 2.5 Flash
-    participant Firestore as 🔥 Firestore DB
-
-    Client->>+FastAPI: POST /upload (multipart file)
-    FastAPI->>+TokenService: create_processing_token(file_bytes)
-    TokenService->>+Firestore: create_token(user_id)
-    Firestore-->>-TokenService: token_id
-    TokenService-->>-FastAPI: return token_id
-    FastAPI-->>-Client: 202 Accepted (token_id)
-
-    Note over TokenService,Firestore: Background processing starts...
-    TokenService->>+VertexAIService: analyze_receipt_media(file_bytes)
-    VertexAIService->>VertexAIService: 1. Create Optimized Prompt
-    VertexAIService->>VertexAIService: 2. Define JSON Schema
-    VertexAIService->>+Gemini: 3. Send (Prompt + Schema + Media)
-    Gemini-->>-VertexAIService: 4. Return Structured JSON
-    VertexAIService-->>-TokenService: Detailed AI Result (JSON)
-
-    TokenService->>TokenService: 5. Transform AI JSON to App Model
-    TokenService->>+Firestore: 6. Update token with final result
-    Firestore-->>-TokenService: Acknowledge update
-
-    loop Periodically
-        Client->>+FastAPI: GET /status/{token_id}
-        FastAPI->>+Firestore: get_token_status(token_id)
-        Firestore-->>-FastAPI: Return current status/result
-        FastAPI-->>-Client: Return final JSON result
-    end
-```
-
----
-
-## ⚡ **Performance Analysis & Insights**
-
-### **Processing Time Breakdown**
-
-Based on comprehensive testing, here's what affects processing times:
-
-#### **Image Processing (10-30 seconds)**
-```
-📸 Image Processing Pipeline:
-├── 📤 Upload & Validation     (1-2s)
-├── 🔄 Image Preprocessing     (2-8s)  ← This can be the bottleneck!
-│   ├── PIL Image Loading
-│   ├── Dimension Checking
-│   └── Resizing (if > 2048px)
-├── 🤖 Gemini AI Analysis      (5-15s)
-├── ✅ Validation & Storage    (2-5s)
-└── 📊 Total Time             (10-30s)
-```
-
-#### **Video Processing (15-45 seconds)**
-```
-🎥 Video Processing Pipeline:
-├── 📤 Upload & Validation     (2-5s)
-├── 🔄 Video Preprocessing     (1-2s)   ← Minimal processing
-├── 🤖 Gemini AI Analysis      (10-35s) ← Main processing time
-├── ✅ Validation & Storage    (2-3s)
-└── 📊 Total Time             (15-45s)
-```
-
-#### **Why Images Can Be Slower Than Videos**
-
-**Surprising Discovery**: In some cases, images take longer than videos due to:
-
-1. **Image Preprocessing Overhead**: The application resizes large images (>2048px) before sending to Gemini
-2. **Memory Usage**: Large image files require more memory for PIL processing
-3. **Compression**: JPEG re-compression adds processing time
-
-**Video Advantage**: Videos are sent directly to Gemini without preprocessing, making the pipeline more streamlined.
-
-### **Optimization Recommendations**
-
-For production deployments, consider:
-
-```python
-# Optional: Disable image resizing for faster processing
-# In agents/receipt_scanner/agent.py
-def _prepare_media(self, media_bytes: bytes, media_type: str):
-    if media_type == "image":
-        # Skip resizing for faster processing
-        return media_bytes, "image/jpeg"
-    return media_bytes, "video/mp4"
-```
-
----
-
-## 🧠 **AI Agent Architecture**
-
-### **Simplified Agent Design**
-
-Our agent follows a streamlined approach optimized for production:
-
-```python
-class SimplifiedReceiptAgent:
-    """Production-optimized receipt analysis agent"""
-
-    def analyze_receipt(self, media_bytes: bytes, media_type: str, user_id: str):
-        # 1. Prepare media (with optional optimization)
-        media_data, mime_type = self._prepare_media(media_bytes, media_type)
-
-        # 2. Use engineered prompt for consistent results
-        prompt = create_simplified_prompt(media_type)
-
-        # 3. Single API call to Gemini
-        response = self.model.generate_content([prompt, media_data])
-
-        # 4. Extract and validate JSON
-        ai_json = self._extract_json_from_response(response.text)
-        receipt_analysis = ReceiptAnalysis.model_validate(ai_json)
-
-        return {"status": "success", "data": receipt_analysis.dict()}
-```
-
-### **Prompt Engineering for Consistency**
-
-Our prompts are carefully engineered to produce consistent, valid JSON:
-
-```python
-def create_simplified_prompt(media_type: str) -> str:
-    return f"""
-    Analyze this {media_type} and extract all visible information.
-    Your response MUST be a single, valid JSON object.
-
-    **CRITICAL INSTRUCTIONS:**
-    1. JSON ONLY: Your entire output must be the JSON object.
-    2. Transaction Type: MUST be either "debit" or "credit". Default to "debit".
-    3. Categorization: Use one of these categories: {TRANSACTION_CATEGORIES}
-    4. Accuracy: Ensure all numbers are correct.
-    """
-```
-
----
-
-## 📊 **Enhanced Output Examples**
-
-### **Restaurant Receipt Example**
-```json
-{
-    "receipt_id": "d2116b7d-2edb-46f6-b2ee-9f2b0ba8c270",
-    "place": "El Chalan Restaurant",
-    "time": "2016-03-12T13:13:00Z",
-    "amount": 49.52,
-    "transactionType": "debit",
-    "category": "Restaurant, fast-food",
-    "description": "Peruvian dinner for 2 including appetizers, main courses, and beverages",
-    "items": [
-        {
-            "name": "Ceviche",
-            "quantity": 1,
-            "unit_price": 15.00,
-            "total_price": 15.00,
-            "category": "Restaurant, fast-food",
-            "description": "Fresh fish ceviche with onions"
-        },
-        {
-            "name": "Lomo Saltado",
-            "quantity": 1,
-            "unit_price": 25.00,
-            "total_price": 25.00,
-            "category": "Restaurant, fast-food",
-            "description": "Beef stir-fry with potatoes"
-        }
-    ],
-    "metadata": {
-        "vendor_type": "RESTAURANT",
-        "confidence": "high",
-        "processing_time_seconds": 12.5,
-        "model_version": "gemini-2.5-flash"
-    }
-}
-```
-
----
-
-## 🧪 **Testing & Development**
-
-### **Local Development Setup**
-
-```bash
-# Clone and setup
-git clone <repository-url>
-cd WalleteriumImperium
-pip install -r requirements.txt
-
-# Configure Google Cloud credentials
-gcloud auth application-default login
-export GOOGLE_CLOUD_PROJECT_ID="your-project-id"
-
-# Start local development server
-python -m uvicorn main:app --host 0.0.0.0 --port 8080 --reload
-```
-
-### **Testing Scripts with Timing**
-
-Our testing scripts now include performance timing:
-
-```bash
-# Test real receipt with timing
-python scripts/test_real_receipt.py path/to/receipt.jpg
-
-# Expected output:
-📸 Analyzing Real Receipt Image: receipt.jpg
-============================================================
-🎉 Analysis Completed!
-📊 Receipt Analysis Results:
-🏪 Store: El Chalan Restaurant
-💰 Total Amount: $49.52
-⏱️ Total time taken: 16.84 seconds
-```
-
-### **API Testing**
-
-```bash
-# Health check
-curl http://localhost:8080/api/v1/health
-
-# Upload receipt
-curl -X POST "http://localhost:8080/api/v1/receipts/upload" \
-  -F "file=@receipt.jpg" \
-  -F "user_id=test_user" \
-  -F "metadata={}"
-
-# Check status
-curl "http://localhost:8080/api/v1/receipts/status/{TOKEN}"
-```
-
----
-
-## 📁 **Project Structure**
-
-```
-WalleteriumImperium/
-├── agents/
-│   └── receipt_scanner/
-│       ├── agent.py              # Main SimplifiedReceiptAgent
-│       ├── prompts.py            # Optimized prompts (UPDATED)
-│       ├── schemas.py            # Pydantic schemas
-│       └── validators.py         # Validation logic
-├── app/
-│   ├── api/
-│   │   ├── receipts.py           # Async API endpoints (UPDATED)
-│   │   └── health.py
-│   ├── core/
-│   │   ├── config.py
-│   │   └── logging.py
-│   ├── services/
-│   │   ├── firestore_service.py  # Firestore integration (UPDATED)
-│   │   ├── token_service.py      # Async token service (UPDATED)
-│   │   └── vertex_ai_service.py
-│   └── models.py                 # Enhanced Pydantic models (UPDATED)
-├── config/
-│   ├── constants.py              # Categories and constants
-│   └── settings.py
-├── scripts/
-│   ├── test_real_receipt.py      # Real receipt testing (UPDATED)
-│   ├── test_video_receipt.py
-│   └── test_api_unified.py
-├── deploy/
-│   ├── build-and-deploy.sh       # Cloud Run deployment
-│   └── setup-gcp.sh             # GCP setup automation
-├── main.py                       # FastAPI app with async lifecycle (UPDATED)
-├── requirements.txt
-├── Dockerfile                    # Cloud Run container
-└── README.md                     # This comprehensive guide
-```
-
----
-
-## 🔧 **Configuration & Environment**
-
-### **Required Environment Variables**
-```bash
-# Core Configuration
-GOOGLE_CLOUD_PROJECT_ID=your-project-id
-VERTEX_AI_LOCATION=us-central1
-FIRESTORE_DATABASE=(default)
-
-# Optional Configuration
-VERTEX_AI_MODEL=gemini-2.5-flash
-MAX_IMAGE_SIZE_MB=10
-LOG_LEVEL=INFO
-PORT=8080
-```
-
-### **Google Cloud Services Setup**
-
-Ensure these services are enabled in your project:
-```bash
-# Enable required services
-gcloud services enable run.googleapis.com
-gcloud services enable aiplatform.googleapis.com
-gcloud services enable firestore.googleapis.com
-
-# Create Firestore database (if not exists)
-gcloud firestore databases create --region=us-central1
-```
-
----
-
-## 📈 **Performance Metrics & Monitoring**
-
-### **Real-World Performance Data**
-
-| **Metric** | **Image** | **Video** | **Notes** |
-|------------|-----------|-----------|-----------|
-| **Average Processing Time** | 16.8s | 13.9s | Video can be faster due to less preprocessing |
-| **95th Percentile** | 25s | 35s | Worst-case scenarios |
-| **Success Rate** | 97% | 92% | Based on 1000+ test receipts |
-| **Cost per Receipt** | ~$0.005 | ~$0.012 | Vertex AI pricing |
-
-### **Monitoring Endpoints**
-
-```bash
-# Application health
-GET /api/v1/health
-
-# Detailed service health
-GET /api/v1/health/detailed
-
-# Processing metrics
-GET /metrics
-```
-
----
-
-## 🚨 **Troubleshooting Guide**
-
-### **Common Issues & Solutions**
-
-#### **1. Processing Timeouts**
-```bash
-# Check Cloud Run timeout settings
-gcloud run services describe walleterium-imperium --region=us-central1
-
-# Increase timeout if needed (max 3600s)
-gcloud run services update walleterium-imperium \
-  --timeout=900 \
-  --region=us-central1
-```
-
-#### **2. Firestore Permission Errors**
-```bash
-# Ensure proper IAM roles
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:YOUR_SERVICE_ACCOUNT" \
-  --role="roles/datastore.user"
-```
-
-#### **3. Memory Issues**
-```bash
-# Increase Cloud Run memory
-gcloud run services update walleterium-imperium \
-  --memory=4Gi \
-  --region=us-central1
-```
-
-#### **4. Cold Start Performance**
-```bash
-# Set minimum instances to reduce cold starts
-gcloud run services update walleterium-imperium \
-  --min-instances=1 \
-  --region=us-central1
-```
-
----
-
-## 📚 **API Documentation**
-
-### **Core Endpoints**
-
-| **Endpoint** | **Method** | **Description** | **Response Time** |
-|-------------|------------|-----------------|-------------------|
-| `/api/v1/receipts/upload` | POST | Upload receipt for analysis | ~200ms (immediate) |
-| `/api/v1/receipts/status/{token}` | GET | Check processing status | ~100ms |
-| `/api/v1/receipts/history` | GET | Get user receipt history | ~300ms |
-| `/api/v1/health` | GET | System health check | ~50ms |
-| `/docs` | GET | Interactive API docs | N/A |
-
-### **Request/Response Examples**
-
-#### **Upload Receipt**
-```bash
-curl -X POST "https://your-service-url/api/v1/receipts/upload" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@receipt.jpg" \
-  -F "user_id=user123" \
-  -F "metadata={\"source\":\"mobile_app\"}"
-```
-
-Response:
-```json
-{
-  "processing_token": "f60c2017-5783-4d05-a5eb-de9a40aa2ef2",
-  "estimated_time": 15,
-  "status": "uploaded",
-  "message": "Receipt uploaded successfully, processing started"
-}
-```
-
----
-
-## 🛡️ **Security & Best Practices**
-
-### **Authentication**
-```python
-# Production: Implement Firebase Auth
-async def get_current_user(credentials: HTTPAuthorizationCredentials):
-    # Verify Firebase JWT token
-    decoded_token = auth.verify_id_token(credentials.credentials)
-    return {"uid": decoded_token["uid"]}
-```
-
-### **Input Validation**
-- File size limits: 10MB for images, 100MB for videos
-- File type validation: Only supported formats accepted
-- User ID validation: Prevents unauthorized access
-
-### **Rate Limiting**
-```python
-# Implement rate limiting for production
-from slowapi import Limiter
-limiter = Limiter(key_func=get_remote_address)
-
-@app.post("/api/v1/receipts/upload")
-@limiter.limit("10/minute")  # 10 uploads per minute per IP
-async def upload_receipt(...):
-```
-
----
-
-## 🔮 **Future Enhancements**
-
-### **Planned Features**
-- **Multi-language Support**: Receipt analysis in 20+ languages
-- **Batch Processing**: Multiple receipt upload and processing
-- **OCR Confidence Scores**: Quality metrics for extracted text
-- **Custom Categories**: User-defined category management
-- **Export Features**: CSV/Excel export for accounting software
-- **Mobile SDK**: React Native and Flutter SDKs
-
-### **Scalability Improvements**
-- **Caching Layer**: Redis integration for frequently accessed data
-- **CDN Integration**: Cloud Storage for receipt images
-- **Auto-scaling**: Advanced Cloud Run scaling configurations
-- **Global Deployment**: Multi-region deployment strategies
-
----
-
-## 📞 **Support & Resources**
-
-### **Documentation**
-- **[TESTING.md](TESTING.md)**: Comprehensive testing guide
-- **[DEPLOYMENT.md](DEPLOYMENT.md)**: Cloud deployment instructions
-- **[API Docs](http://localhost:8080/docs)**: Interactive Swagger documentation
-
-### **Monitoring & Observability**
-- **Cloud Logging**: Structured logs in Google Cloud Console
-- **Cloud Monitoring**: Performance metrics and alerting
-- **Error Reporting**: Automatic error tracking and notification
-
-### **Cost Optimization**
-- **Vertex AI**: ~$0.005-0.012 per receipt
-- **Firestore**: ~$0.001 per receipt (storage + operations)
-- **Cloud Run**: ~$0.002-0.005 per receipt (compute time)
-- **Total Cost**: ~$0.008-0.020 per receipt
-
----
-
-## 🎉 **Getting Started Checklist**
-
-- [ ] **Set up Google Cloud Project** with Vertex AI and Firestore enabled
-- [ ] **Configure authentication** with `gcloud auth application-default login`
-- [ ] **Clone repository** and install dependencies
-- [ ] **Test locally** with `uvicorn main:app --host 0.0.0.0 --port 8080`
-- [ ] **Upload test receipt** using `scripts/test_real_receipt.py`
-- [ ] **Deploy to Cloud Run** using provided deployment commands
-- [ ] **Monitor performance** through Cloud Console
-- [ ] **Integrate with your application** using the REST API
-
-**Your production-ready receipt analysis system is now live! 🚀📊🔥**
-
----
-
-*Built with ❤️ using FastAPI, Google Cloud, and modern async architecture*
-*Optimized for serverless deployment and enterprise scalability*
-
-## 🗺️ Holistic Multi-Agent Architecture (Google Cloud Hackathon View)
 ```mermaid
 graph TD
-    subgraph Client_Devices
-        A1(Web_SPA)
-        A2(Mobile_App)
-        A3(Back_Office_Scripts)
+    subgraph User Facing
+        A[Web & Mobile Clients]
     end
-    subgraph FastAPI_Gateway
-        B(Async_API_Layer)
-        B -->|/api/v1/receipts| RS[Receipt_Scanner_Agent]
-        B -->|/api/v1/onboarding| OB[Onboarding_Agent]
-        B -.->|/api/v1/health| HC[Health_Endpoints]
+
+    subgraph "Google Cloud Platform (us-central1)"
+        subgraph "Cloud Run Service"
+            B(FastAPI Gateway)
+        end
+
+        subgraph "AI & Database Services"
+            C(Vertex AI - Gemini 2.5 Flash)
+            D(Firestore Database)
+        end
+
+        subgraph "Walleterium Agents"
+            E[Onboarding Agent]
+            F[Receipt Scanner Agent]
+        end
     end
-    RS --> VAI[Vertex_AI_Gemini_2.5_Flash_Vision]
-    OB --> VAI
-    WB --> VAI
-    RS --> FS[(Firestore)]
-    OB --> FS
-    WB --> FS
+
+    A -- "REST API Calls" --> B
+    B -- "Handles Requests" --> E
+    B -- "Handles Requests" --> F
+    E -- "LLM Calls & Function Tools" --> C
+    F -- "LLM Calls (Vision)" --> C
+    E -- "Saves Profile Data" --> D
+    F -- "Saves Receipt Data" --> D
+
+    style B fill:#e1f5fe,stroke:#333
+    style C fill:#fff3e0,stroke:#333
+    style D fill:#f3e5f5,stroke:#333
 ```
 
-### 🔀 Sequence Diagram – Receipt Scanner Agent
+### **Component Interaction Flowchart**
+
+This flowchart details the step-by-step logic from user request to final data storage.
+
+```mermaid
+graph LR
+    A[Client Request] --> B{FastAPI Gateway};
+    
+    B --> C{Request Path?};
+    C -- "/api/v1/onboarding/chat" --> D[Invoke Onboarding Agent];
+    C -- "/api/v1/receipts/upload" --> E[Invoke Receipt Scanner Agent];
+    
+    D --> F[Start/Continue Chat Session];
+    F --> G{Need to call a tool?};
+    G -- Yes --> H[Execute Function Tool (e.g., update_profile)];
+    H --> I[Save/Update Profile in Firestore];
+    G -- No --> J[Generate Conversational Response];
+    
+    E --> K[Analyze Receipt Media (Image/Video)];
+    K --> L[Extract Structured JSON from Gemini];
+    L --> M[Save Receipt Data to Firestore];
+
+    J --> N[Return Response to Client];
+    I --> J;
+    M --> N;
+
+    style D fill:#c8e6c9
+    style E fill:#c8e6c9
+    style I fill:#f3e5f5
+    style M fill:#f3e5f5
+```
+
+### **End-to-End Sequence Diagram: A Unified View**
+
+This diagram illustrates the complete user journey, showing how a user is first onboarded and then scans a receipt.
+
 ```mermaid
 sequenceDiagram
     participant Client
-    participant API
-    participant Scanner
-    participant Gemini
+    participant API as FastAPI Gateway
+    participant Onboarding as OnboardingAgent
+    participant ReceiptScanner as ReceiptScannerAgent
+    participant Gemini as Gemini 2.5 Flash
     participant Firestore
-    Client->>API: POST /api/v1/receipts/upload
-    API-->>Client: 202 Accepted + token
-    Note over API,Scanner: Background Task
-    API->>Scanner: analyze(media,user_id)
-    Scanner->>Gemini: generateContent(prompt,media)
-    Gemini-->>Scanner: JSON result
-    Scanner->>Firestore: save(receipt,token)
-    Client->>API: GET /api/v1/receipts/status/{token}
-    API->>Firestore: fetch(token)
-    API-->>Client: progress / final result
+
+    %% Onboarding Flow %%
+    Note over Client, Firestore: Phase 1: Conversational Onboarding
+    Client->>API: POST /onboarding/chat (query="")
+    API->>Onboarding: chat(session_id, user_id, "Hello")
+    Onboarding->>Gemini: model.start_chat()
+    Gemini-->>Onboarding: "Hi, I'm Wally! What's your financial goal?"
+    Onboarding-->>API: Conversational response
+    API-->>Client: "Hi, I'm Wally!..."
+
+    Client->>API: POST /onboarding/chat (query="Buy a car")
+    API->>Onboarding: chat(session_id, user_id, "Buy a car")
+    Onboarding->>Gemini: Send user message & history
+    
+    Note over Gemini: Gemini detects need to save goal
+    Gemini-->>Onboarding: function_call: update_user_profile(goals=["Buy a car"])
+    
+    Onboarding->>Firestore: set("wallet_user_collection/{user_id}", {goals: ["Buy a car"]})
+    Firestore-->>Onboarding: Success
+    Onboarding->>Gemini: Send function success response
+    Gemini-->>Onboarding: "Great goal! Do you own any stocks?"
+    Onboarding-->>API: Next question
+    API-->>Client: "Great goal! Do you own any stocks?"
+
+    Note over Client, Firestore: ...conversation continues until onboarding is complete...
+
+    %% Receipt Scanning Flow %%
+    Note over Client, Firestore: Phase 2: Receipt Scanning
+    Client->>API: POST /receipts/upload (file.jpg, user_id)
+    API->>ReceiptScanner: analyze_receipt(file_bytes, "image", user_id)
+    ReceiptScanner->>ReceiptScanner: Prepare media (resize if needed)
+    ReceiptScanner->>ReceiptScanner: Create simplified prompt
+    ReceiptScanner->>Gemini: generate_content([prompt, image_part])
+    
+    Note over Gemini: Gemini analyzes the image and extracts data
+    Gemini-->>ReceiptScanner: Structured JSON response
+    
+    ReceiptScanner->>Firestore: save("receipts/{receipt_id}", {receipt_data})
+    Firestore-->>ReceiptScanner: Success
+    ReceiptScanner-->>API: JSON result
+    API-->>Client: {"status": "success", "data": {...}}
 ```
 
-_The Onboarding Agent sequence is documented in `agents/onboarding_agent/README.md`._
+---
 
-### 🧬 LLM Calls & Agent Configuration
+## 🚀 **Getting Started: Local Development**
 
-| Agent | Model | Calls / Turn | Tokens (in/out) | Vision |
-|-------|-------|-------------|-----------------|--------|
-| Onboarding | gemini-2.5-flash | 1 | 2k / 256 | No |
-| Receipt Scanner | gemini-2.5-flash | 1 | 4k / 512 | Yes |
+Follow these steps to run the Walleterium Imperium backend on your local machine.
 
-Each agent is powered by the Google **Agent Development Kit (ADK)** and exposes domain-specific **tools**. The FastAPI layer orchestrates tool execution, persists state in Firestore, and keeps every container stateless and Cloud-Run-friendly.
+### **1. Prerequisites**
+- Python 3.9+
+- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) installed and authenticated.
+- A Google Cloud Project with **Vertex AI** and **Firestore** APIs enabled.
 
-### 🏅 Google Cloud Hackathon Notes
+### **2. Installation**
+```bash
+# Clone the repository
+git clone <your-repository-url>
+cd WalleteriumImperium
 
-This multi-agent architecture showcases the synergy between Vertex AI Gemini and Cloud Run. All diagrams and metrics are suitable for inclusion in your hackathon submission deck – feel free to reuse them! 🚀
+# Create a virtual environment and install dependencies
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+pip install -r requirements.txt
+```
+
+### **3. Configuration**
+```bash
+# Authenticate with Google Cloud for application services
+gcloud auth application-default login
+
+# Set your Google Cloud Project ID as an environment variable
+# (Replace 'your-gcp-project-id' with your actual project ID)
+export GOOGLE_CLOUD_PROJECT_ID="your-gcp-project-id"
+```
+
+### **4. Run the Server**
+```bash
+# Start the FastAPI server with auto-reload for development
+uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+```
+The API is now running at `http://localhost:8080`. You can access the interactive documentation at `http://localhost:8080/docs`.
+
+---
+
+## 🔌 **API Usage Quick-Start**
+
+Interact with the key endpoints to experience the multi-agent system.
+
+### **1. Onboard a New User**
+
+Start a conversation with Wally, the Onboarding Agent. Use the same `session_id` to maintain context.
+
+```bash
+# Step 1: Start the conversation
+curl -X POST "http://localhost:8080/api/v1/onboarding/chat" \
+-H "Content-Type: application/json" \
+-d '{
+  "user_id": "test_user_001",
+  "query": "",
+  "language": "en",
+  "session_id": "session-abc-123"
+}'
+
+# Step 2: Respond to Wally's question
+curl -X POST "http://localhost:8080/api/v1/onboarding/chat" \
+-H "Content-Type: application/json" \
+-d '{
+  "user_id": "test_user_001",
+  "query": "I want to save up for a trip to Japan!",
+  "language": "en",
+  "session_id": "session-abc-123"
+}'
+```
+
+### **2. Scan a Receipt**
+
+Once the user is onboarded, they can scan receipts using the Receipt Scanner Agent.
+
+```bash
+# Upload a receipt image for analysis
+curl -X POST "http://localhost:8080/api/v1/receipts/upload" \
+  -F "file=@/path/to/your/receipt.jpg" \
+  -F "user_id=test_user_001"
+```
+
+The API will return the extracted JSON data directly.
+
+---
+
+## ☁️ **Deployment to Google Cloud Run**
+
+Deploy the application as a scalable, serverless container.
+
+```bash
+# Set your project ID
+export PROJECT_ID="your-gcp-project-id"
+
+# Build the container and deploy it to Cloud Run
+gcloud run deploy walleterium-imperium \
+  --source . \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars=GOOGLE_CLOUD_PROJECT_ID=$PROJECT_ID \
+  --memory=2Gi \
+  --cpu=1
+```
+
+Your service will be available at the URL provided by Google Cloud Run.
+
+---
+
+## 🗂️ **Project Structure**
+
+```
+/
+├── agents/
+│   ├── onboarding_agent/   # Manages conversational user profiling
+│   └── receipt_scanner/    # Manages receipt analysis from media
+├── app/
+│   ├── api/                # FastAPI routers for each domain
+│   ├── core/               # Configuration and logging setup
+│   ├── services/           # Firestore and other external services
+│   └── utils/              # Utility functions like monitoring
+├── config/                 # Global constants and settings
+├── deploy/                 # Deployment scripts and configurations
+├── scripts/                # Testing and utility scripts
+├── main.py                 # Main FastAPI application entrypoint
+├── Dockerfile              # Container definition for Cloud Run
+└── README.md               # You are here!
+```

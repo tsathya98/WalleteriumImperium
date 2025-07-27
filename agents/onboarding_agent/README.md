@@ -1,481 +1,353 @@
-# Onboarding Agent ("Wally")
+# Onboarding Agent ("Wally"): A Deep Dive
 
-The Onboarding Agent, "Wally," is a conversational AI designed to create a comprehensive user profile by understanding their financial habits, goals, and risk appetite. It uses a friendly, multi-lingual, and adaptive conversational approach to gather necessary details for personalizing the user's experience in Walleterium Imperium.
+Wally is a sophisticated, conversational AI agent responsible for user onboarding within the Walleterium Imperium platform. Its primary mission is to create a comprehensive and personalized user profile through a friendly, natural conversation, completely eliminating the need for traditional, static forms.
 
-## Features
+## 🌟 **Features & Business Impact**
 
-- **Conversational Onboarding**: Engages users in a natural, back-and-forth conversation to gather information, replacing traditional static forms.
-- **User Persona Profiling**: Dynamically identifies user personas (`Budgetor`, `Investor`, `Explorer`, `Maximizer`) based on their responses to tailor the app experience.
-- **Multi-lingual Support**: Can conduct conversations in multiple languages, specified via an API parameter.
-- **Stateful Conversation**: Remembers the entire conversation history for a given session, allowing for context-aware follow-up questions.
-- **Structured Data Output**: The gathered information is structured into a clear JSON format in the background, which can be easily used by other services.
+Wally is more than just a chatbot; it's the first point of contact for users and is designed to maximize engagement from the very beginning.
 
-## How It Works: The Conversational Loop
+| **Feature** | **Technical Implementation** | **Business Value** |
+|-------------|----------------------------|--------------------|
+| **Conversational Profiling** | A stateful chat loop powered by Gemini, using function calling to save data incrementally. | **Boosts Engagement**: Turns a boring task into a fun, interactive experience, leading to higher profile completion rates. |
+| **Dynamic Persona Assignment**| AI-driven analysis of the conversation summary to classify users into personas like `Budgetor`, `Investor`, etc. | **Enables Personalization**: Allows the platform to tailor financial advice, product recommendations, and content to the user's specific style. |
+| **Hard-Coded Exchange Limit** | The conversation is strictly limited to 5 exchanges, with a forced completion mechanism. | **Ensures Efficiency**: Guarantees a quick and focused onboarding process, respecting the user's time and reducing drop-off rates. |
+| **Multi-lingual Support** | The agent adapts its conversational language based on the `language` parameter in the API request. | **Increases Accessibility**: Allows the platform to cater to a global audience, expanding the total addressable market. |
+| **Secure Data Handling** | All user data is saved directly to a secure, structured Google Firestore database. | **Builds Trust**: Ensures user data is handled with best practices for security and privacy, a critical factor for financial apps. |
 
-The agent works in a simple but powerful request-response loop. The key is that the **frontend always initiates the request**, and the **backend's response always contains the next question**, ensuring the conversation flows naturally. The backend does not trigger requests on its own.
+---
 
-1.  **Conversation Start**: The frontend sends the first `POST` request with an empty `query`.
-2.  **Agent Greets**: The backend detects a new conversation and prompts "Wally" to introduce itself and ask its first question.
-3.  **User Responds**: The frontend displays Wally's question and sends the user's answer in a new `POST` request, using the same `session_id`.
-4.  **Agent Thinks & Asks**: The backend gives the user's answer to Wally. Wally processes the information, updates the user's profile in the background using its tools, and formulates the next logical question.
-5.  **Loop Continues**: This loop repeats, with Wally asking new questions based on previous answers, until it has enough information to build a complete user profile and assign a persona.
+## 🏗️ **Agent Architecture & LLM Pipeline**
 
-### Conversation Flow Visualized
+Wally's architecture is designed for efficiency, state management, and robust interaction with backend services.
+
+### **Detailed Agentic Pipeline**
+
+This diagram shows the complete, end-to-end flow of a single conversational turn with Wally.
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Frontend
-    participant "Backend API (/chat)" as Backend
-    participant "Wally (Gemini Agent)" as Agent
-
-    Note over Frontend, Backend: 1. Conversation Starts
-    Frontend->>Backend: POST {session_id: "xyz", query: ""}
-    Backend->>Agent: chat("Hello! Please introduce yourself...")
-    Agent-->>Backend: "Hi, I'm Wally! What's your financial goal?"
-    Backend-->>Frontend: {response: "Hi, I'm Wally!..."}
-
-    Note over User, Frontend: 2. User Interaction
-    Frontend->>User: Displays Wally's Question
-    User->>Frontend: Enters Answer: "Buy a new car"
-
-    Note over Frontend, Backend: 3. Conversation Continues (The Loop)
-    Frontend->>Backend: POST {session_id: "xyz", query: "Buy a new car"}
-    Backend->>Agent: chat("Buy a new car")
-    Agent-->>Backend: "A new car, how exciting! When are you hoping to buy it?"
-    Backend-->>Frontend: {response: "A new car, how exciting!..."}
-
-    Frontend->>User: Displays Wally's Next Question
-    User->>Frontend: Enters Answer: "Next year"
-    
-    Frontend->>Backend: POST {session_id: "xyz", query: "Next year"}
-    Backend-->>Frontend: ...and so on...
-    
-    Note right of Backend: Loop continues until profile is complete.
-```
-
-## How to Use the API
-
-The entire onboarding conversation is handled by a single API endpoint. You must manage the `session_id` on the client-side to maintain the conversation's state.
-
-- **URL**: `/api/v1/onboarding/chat`
-- **Method**: `POST`
-- **Headers**: `Content-Type: application/json`
-
-### Step 1: Start the Conversation
-
-To begin the conversation, send a request with an empty `query`. The server will respond with Wally's first question.
-
-**Request (`curl` example):**
-```bash
-curl -X POST http://localhost:8080/api/v1/onboarding/chat \
--H "Content-Type: application/json" \
--d '{
-  "user_id": "kumara123",
-  "query": "",
-  "language": "en",
-  "session_id": "session-unique-123"
-}'
-```
-
-**Expected Response:**
-```json
-{
-  "response": "Well hello there, future financial superstar! I'm Wally... What's the very first thing you'd do with it?...",
-  "session_id": "session-unique-123"
-}
-```
-
-### Step 2: Continue the Conversation
-
-Take the user's answer and send it as the `query` in the next request. **You must use the same `session_id` for the entire conversation.**
-
-**Request (`curl` example):**
-```bash
-curl -X POST http://localhost:8080/api/v1/onboarding/chat \
--H "Content-Type: application/json" \
--d '{
-  "user_id": "kumara123",
-  "query": "I would invest in mutual funds",
-  "language": "en",
-  "session_id": "session-unique-123"
-}'
-```
-
-**Expected Response:**
-```json
-{
-  "response": "That's a fantastic choice! Investing in mutual funds tells me you've got a keen eye on making your money work for you... What's a big dream you're saving for this year?",
-  "session_id": "session-unique-123"
-}
-```
-
-Continue this request-response loop until Wally indicates the onboarding is complete.
-
-## 🔀 Detailed LLM Pipeline Sequence Diagram
-
-### High-Level Agentic Architecture
-```mermaid
-graph LR
-    User --> FastAPI
-    FastAPI --> Firestore
-    FastAPI --> Wally
-    Wally --> PersonaClassifier
-    Wally --> Firestore
-```
-
-### Detailed Vertex AI LLM Pipeline
-```mermaid
-sequenceDiagram
-    participant Client as Client Application
-    participant API as FastAPI Endpoint
+    participant Client as Client App
+    participant API as FastAPI Endpoint </br> (/onboarding/chat)
     participant Agent as OnboardingAgent
-    participant VertexAI as Vertex AI SDK
-    participant Gemini as Gemini 2.5 Flash Model
-    participant Firestore as Firestore Service
-    participant Config as Configuration
-    participant Tools as Function Tools
-
-    Note over Client,Tools: Initialization Phase
-    API->>Agent: OnboardingAgent()
-    Agent->>Config: get_settings()
-    Config-->>Agent: project_id, location, model_name
-    Agent->>VertexAI: vertexai.init(project, location)
-    VertexAI-->>Agent: initialized
-    
-    Agent->>Agent: Define FunctionDeclarations (update_user_profile, generate_complete_profile)
-    Agent->>Tools: Tool(function_declarations=[...])
-    Tools-->>Agent: tool instances
-    
-    Agent->>Agent: GenerationConfig(temp=0.7, top_p=0.8, top_k=40, max_tokens=2048)
-    Agent->>VertexAI: GenerativeModel(gemini-2.5-flash, tools, config, system_instruction)
-    VertexAI-->>Agent: model instance with tools
-    Note over Agent: Agent Ready with 5-exchange limit ✅
-
-    Note over Client,Tools: Conversation Phase
-    Client->>API: POST /api/v1/onboarding/chat
-    API->>Agent: chat(firestore_service, session_id, user_id, query, language)
-    Agent->>Agent: Initialize/increment message_counters[session_id]
-    Agent->>Agent: current_exchange = message_counters[session_id]
-    
-    alt First exchange (session_id not in sessions)
-        Agent->>Gemini: model.start_chat()
-        Gemini-->>Agent: chat_session
-        Agent->>Agent: sessions[session_id] = chat_session
-    else Existing conversation
-        Agent->>Agent: chat_session = sessions[session_id]
-    end
-
-    Note over Agent,Gemini: Exchange Limit Check
-    alt current_exchange >= max_messages (5)
-        Agent->>Agent: Force completion
-        Agent->>Agent: generate_complete_profile(user_id, conversation_summary)
-        Agent->>Firestore: save_user_profile_data()
-        Firestore-->>Agent: save_result
-        Agent-->>API: {"text": "Onboarding complete!", "onboarding_complete": True}
-    else Continue conversation
-        Agent->>Agent: context_message = f"Exchange {current_exchange}/5 - User: {query}"
-        Agent->>Gemini: chat_session.send_message(context_message)
-        
-        Note over Gemini: AI Processing
-        Note over Gemini: - Analyze user response<br/>- Determine next question<br/>- Decide if function call needed<br/>- Apply persona classification logic
-        
-        Gemini-->>Agent: response with potential function_call
-        
-        alt Function call detected
-            Agent->>Agent: Extract function_name and function_args
-            
-            alt function_name == "update_user_profile"
-                Agent->>Agent: Add user_id to function_args
-                Agent->>Agent: update_user_profile(firestore_service, **function_args)
-                Agent->>Firestore: save_user_profile_data()
-                Firestore-->>Agent: function_result
-            else function_name == "generate_complete_profile"
-                Agent->>Agent: Add user_id to function_args
-                Agent->>Agent: generate_complete_profile(firestore_service, **function_args)
-                Agent->>Firestore: save_user_profile_data()
-                Firestore-->>Agent: function_result
-                Agent->>Agent: onboarding_complete = True
-            end
-            
-            Agent->>Gemini: chat_session.send_message(Part.from_function_response())
-            Gemini-->>Agent: function_response_processed
-            Agent->>Gemini: chat_session.send_message("Continue conversation...")
-            Gemini-->>Agent: final_response
-        else No function call
-            Agent->>Agent: Use response.text directly
-        end
-        
-        Agent-->>API: {"text": response.text, "session_id": session_id, "onboarding_complete": status}
-    end
-    
-    API-->>Client: JSON response with next question or completion
-```
-
-### Function Tool Integration Pipeline
-```mermaid
-sequenceDiagram
     participant Gemini as Gemini 2.5 Flash
-    participant Agent as OnboardingAgent
-    participant ProfileTool as update_user_profile
-    participant GenerateTool as generate_complete_profile
-    participant Firestore as Firestore Collections
+    participant Tools as Function Tools </br> (update/generate profile)
+    participant Firestore
 
-    Note over Gemini,Firestore: Function Declaration Setup
-    Agent->>Agent: Define FunctionDeclaration schemas
-    Agent->>Agent: Tool registration with parameter validation
+    Client->>API: POST {session_id, user_id, query}
+    API->>Agent: chat(session_id, user_id, query)
+
+    Note over Agent: Message Counter: 3/5
+    Agent->>Agent: Get/Create ChatSession for session_id
+    Agent->>Agent: Create context-aware prompt </br> "Exchange 3/5 - User: {query}"
     
-    Note over Gemini,Firestore: Runtime Function Execution
-    Gemini->>Agent: function_call: update_user_profile
-    Agent->>ProfileTool: execute(user_id, financial_goals, persona, etc.)
+    Agent->>Gemini: chat_session.send_message(context_prompt)
     
-    ProfileTool->>ProfileTool: Build profile_data dict
-    ProfileTool->>Firestore: wallet_user_collection.document(user_id).set(user_data)
-    ProfileTool->>Firestore: user_assets subcollection.add(asset_data)
-    Firestore-->>ProfileTool: save_result
-    ProfileTool-->>Agent: {"status": "success", "message": "Profile saved"}
-    
-    Agent->>Gemini: Part.from_function_response(result)
-    
-    alt Final exchange or completion trigger
-        Gemini->>Agent: function_call: generate_complete_profile
-        Agent->>GenerateTool: execute(user_id, conversation_summary)
-        
-        GenerateTool->>GenerateTool: Extract keywords from conversation
-        GenerateTool->>GenerateTool: Classify persona (Budgetor/Investor/Explorer/Maximizer/Spontaneous)
-        GenerateTool->>GenerateTool: Infer investment_interests and financial_goals
-        GenerateTool->>Firestore: Complete profile save with onboarding_complete=True
-        Firestore-->>GenerateTool: save_result
-        GenerateTool-->>Agent: {"status": "success", "profile": complete_profile}
-    end
+    Note over Gemini: Analyzes conversation history </br> and latest user message.
+    Gemini-->>Agent: function_call: update_user_profile(risk_appetite="high")
+
+    Agent->>Tools: execute("update_user_profile", {risk_appetite:"high"})
+    Tools->>Firestore: set("wallet_user_collection/{user_id}", {risk_appetite:"high"}, merge=True)
+    Firestore-->>Tools: Success
+    Tools-->>Agent: {status: "success"}
+
+    Agent->>Gemini: send_message(Part.from_function_response(...))
+    Gemini-->>Agent: "Thanks for sharing! Now, let's talk about your investment interests."
+
+    Agent-->>API: {text: "Thanks for sharing!...", onboarding_complete: false}
+    API-->>Client: {response: "Thanks for sharing!...", ...}
 ```
 
-### LLM Model Configuration Details
+### **Forced Completion Flow**
+
+If the conversation reaches the 5-exchange limit, the agent automatically finalizes the profile.
+
 ```mermaid
-graph TD
-    A[Vertex AI Initialization] --> B[Project: GOOGLE_CLOUD_PROJECT_ID]
-    A --> C[Location: us-central1]
-    A --> D[Model: gemini-2.5-flash]
+sequenceDiagram
+    participant Agent as OnboardingAgent
+    participant Gemini as Gemini 2.5 Flash
+    participant Tools as Function Tools
+    participant Firestore
+
+    Note over Agent: Message Counter: 5/5
+    Agent->>Agent: Reached max exchanges, forcing completion.
+    Agent->>Tools: execute("generate_complete_profile", {summary: "..."})
     
-    D --> E[GenerationConfig]
-    E --> F[Temperature: 0.7 - Conversational creativity]
-    E --> G[Top P: 0.8 - Balanced sampling]
-    E --> H[Top K: 40 - Diverse responses]
-    E --> I[Max Tokens: 2048 - Conversation capacity]
-    
-    J[Function Tools] --> K[update_user_profile: Save incremental data]
-    J --> L[generate_complete_profile: Finalize onboarding]
-    
-    M[System Instruction] --> N[5-Exchange Limit Constraint]
-    M --> O[Persona Classification Rules]
-    M --> P[Efficient Question Strategy]
-    M --> Q[Conversation Flow Phases]
-    
-    R[Session Management] --> S[Chat Session Per session_id]
-    R --> T[Message Counter Tracking]
-    R --> U[Forced Completion Logic]
+    Note over Tools: Infers persona, goals, etc. from conversation summary.
+    Tools->>Firestore: set("wallet_user_collection/{user_id}", {complete_profile}, merge=True)
+    Firestore-->>Tools: Success
+    Tools-->>Agent: {status: "success", profile: {...}}
+
+    Agent-->>API: {text: "Thanks! Your profile is complete!", onboarding_complete: true}
 ```
 
-## 🤖 LLM Call Details
+---
 
-### Model Configuration
-- **Model**: `gemini-2.5-flash` (conversational with function calling)
-- **Temperature**: 0.7 (balanced creativity for natural conversation)
-- **Top P**: 0.8 (focused but diverse response sampling)
-- **Top K**: 40 (moderate token choice limitation)
-- **Max Output Tokens**: 2048 (sufficient for conversational responses)
+## 🚀 **Frontend Integration Guide**
 
-### Request Structure
-- **Input**: Stateful chat sessions with:
-  - System instruction defining "Wally" persona and 5-exchange limit
-  - Conversation history maintained per session_id
-  - Context-aware exchange tracking (Exchange X/5)
-  - Function tool declarations for profile management
-- **Processing**: Chat session continuation with function call detection
-- **Output**: Conversational response with optional function execution results
+Integrating with Wally is straightforward. The entire conversation is managed through a single API endpoint, and the frontend's main responsibility is to maintain the `session_id`.
 
-### Performance Metrics
-- **Exchange Limit**: Maximum 5 user interactions per onboarding session
-- **Function Calls**: 2-4 profile update calls + 1 final generation call per session
-- **Session Management**: In-memory chat sessions keyed by session_id
-- **Completion Rate**: 100% guaranteed via forced completion at exchange 5
+- **Endpoint**: `/api/v1/onboarding/chat`
+- **Method**: `POST`
+- **Authentication**: `user_id` must be provided in the request body.
 
-### Agentic Features
-- **Stateful Conversations**: Persistent chat sessions with memory
-- **Function Tool Integration**: Dynamic profile building via declared functions
-- **Forced Completion**: Automatic onboarding completion after 5 exchanges
-- **Persona Classification**: AI-driven assignment of financial personality types
-- **Multi-language Support**: Conversation adaptation based on language parameter
+### **State Management**
 
-### Function Tool Schema
-```python
-# update_user_profile function parameters
-{
-  "user_id": str,
-  "financial_goals": List[str],
-  "spending_habits": str,
-  "risk_appetite": str,  # low/medium/high
-  "persona": str,        # Budgetor/Investor/Explorer/Maximizer/Spontaneous
-  "has_invested_before": bool,
-  "investment_interests": List[str],
-  "real_estate_assets": List[Dict],
-  "gold_assets": List[Dict],
-  "stock_assets": List[Dict],
-  "recurring_bills": List[Dict],
-  "onboarding_complete": bool
-}
+The frontend must manage the following state variables:
+- `sessionId`: A unique string generated once at the start of the conversation.
+- `userId`: The unique identifier for the logged-in user.
+- `conversationHistory`: An array of objects to display the chat history.
+- `isLoading`: A boolean to show a loading indicator while waiting for the API response.
+- `isOnboardingComplete`: A boolean to know when to transition the user to the main app experience.
 
-# generate_complete_profile function parameters
-{
-  "user_id": str,
-  "conversation_summary": str
+### **Step-by-Step Code Examples**
+
+#### **JavaScript (React) Example**
+
+This example shows a simple React component for a chat interface.
+
+```javascript
+import React, { useState, useEffect } from 'react';
+
+const OnboardingChat = ({ userId }) => {
+    const [sessionId, setSessionId] = useState(null);
+    const [messages, setMessages] = useState([]);
+    const [inputValue, setInputValue] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isComplete, setIsComplete] = useState(false);
+
+    const API_URL = 'http://localhost:8080/api/v1/onboarding/chat';
+
+    // 1. Start the conversation when the component mounts
+    useEffect(() => {
+        const startConversation = async () => {
+            setIsLoading(true);
+            const newSessionId = `session-${userId}-${Date.now()}`;
+            setSessionId(newSessionId);
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userId,
+                    query: '', // Start with an empty query
+                    language: 'en',
+                    session_id: newSessionId,
+                }),
+            });
+            const data = await response.json();
+            setMessages([{ sender: 'Wally', text: data.response }]);
+            setIsLoading(false);
+        };
+        startConversation();
+    }, [userId]);
+
+    // 2. Handle sending user messages
+    const handleSendMessage = async (e) => {
+        e.preventDefault();
+        if (!inputValue.trim() || isLoading) return;
+
+        const userMessage = { sender: 'user', text: inputValue };
+        setMessages(prev => [...prev, userMessage]);
+        setInputValue('');
+        setIsLoading(true);
+
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                query: inputValue,
+                language: 'en',
+                session_id: sessionId,
+            }),
+        });
+        const data = await response.json();
+        
+        setMessages(prev => [...prev, { sender: 'Wally', text: data.response }]);
+        if (data.onboarding_complete) {
+            setIsComplete(true);
+            // Optional: Redirect to dashboard after a delay
+            setTimeout(() => alert('Onboarding complete! Redirecting...'), 2000);
+        }
+        setIsLoading(false);
+    };
+
+    if (isComplete) {
+        return <div><h2>Onboarding Complete!</h2><p>Welcome to Walleterium Imperium!</p></div>;
+    }
+    
+    return (
+        <div>
+            {/* Render chat messages here */}
+            {messages.map((msg, index) => (
+                <div key={index} className={`message ${msg.sender}`}>
+                    <strong>{msg.sender === 'user' ? 'You' : 'Wally'}:</strong> {msg.text}
+                </div>
+            ))}
+            {isLoading && <div>Wally is typing...</div>}
+            
+            <form onSubmit={handleSendMessage}>
+                <input
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="Type your message..."
+                    disabled={isLoading}
+                />
+                <button type="submit" disabled={isLoading}>Send</button>
+            </form>
+        </div>
+    );
+};
+
+export default OnboardingChat;
+```
+
+#### **Flutter (Dart) Example**
+
+A service and widget to manage the onboarding chat in a Flutter application.
+
+**1. `onboarding_service.dart`**
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+class OnboardingService {
+  static const String _baseUrl = 'http://YOUR_API_BASE_URL';
+
+  Future<Map<String, dynamic>> sendMessage(String userId, String query, String sessionId) async {
+    final uri = Uri.parse('$_baseUrl/api/v1/onboarding/chat');
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'query': query,
+        'language': 'en',
+        'session_id': sessionId,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to communicate with Wally.');
+    }
+  }
 }
 ```
 
-## 🧠 Agentic Implementation Notes
+**2. `onboarding_chat_screen.dart`**
+```dart
+import 'package:flutter/material.dart';
+// ... import your OnboardingService
 
-### Core Agent Architecture
-The `OnboardingAgent` implements a sophisticated conversational pipeline with the following key components:
+class OnboardingChatScreen extends StatefulWidget {
+  final String userId;
+  OnboardingChatScreen({required this.userId});
 
-1. **Singleton Pattern**: Global agent instance with session management for scalability
-2. **Stateful Chat Sessions**: Individual `ChatSession` objects per `session_id` with conversation memory
-3. **Exchange Limiting**: Hard constraint of 5 user exchanges with forced completion mechanism
-4. **Function Tool Integration**: Two declared functions for incremental and final profile building
-5. **Multi-language Adaptation**: Dynamic conversation adaptation based on language parameter
+  @override
+  _OnboardingChatScreenState createState() => _OnboardingChatScreenState();
+}
 
-### System Instruction Strategy
-The agent uses a comprehensive system instruction that defines:
+class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
+  final OnboardingService _service = OnboardingService();
+  final TextEditingController _controller = TextEditingController();
+  late final String _sessionId;
+  
+  List<String> _chatHistory = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionId = 'session-${widget.userId}-${DateTime.now().millisecondsSinceEpoch}';
+    _startConversation();
+  }
+
+  void _startConversation() async {
+    final response = await _service.sendMessage(widget.userId, '', _sessionId);
+    setState(() {
+      _chatHistory.add('Wally: ${response['response']}');
+      _isLoading = false;
+    });
+  }
+
+  void _sendMessage() async {
+    if (_controller.text.isEmpty) return;
+    
+    final userMessage = _controller.text;
+    setState(() {
+      _chatHistory.add('You: $userMessage');
+      _isLoading = true;
+    });
+    _controller.clear();
+
+    final response = await _service.sendMessage(widget.userId, userMessage, _sessionId);
+    setState(() {
+      _chatHistory.add('Wally: ${response['response']}');
+      if (response['onboarding_complete'] == true) {
+        // Handle completion
+      }
+      _isLoading = false;
+    });
+  }
+
+  // ... rest of your widget build method using ListView.builder, etc.
+}
+```
+
+---
+
+## 🧠 **Agentic Internals & Configuration**
+
+A look under the hood at how Wally is configured and operates.
+
+### **System Instruction: The Agent's "Constitution"**
+
+The agent's behavior is governed by a detailed system instruction that enforces its persona, goals, and constraints.
+
 ```python
 system_instruction = """
-You are "Wally," a friendly financial onboarding assistant.
-CRITICAL CONSTRAINT: Maximum 5 message exchanges to complete onboarding!
+You are "Wally," a friendly, expert financial onboarding assistant...
+Your goal is to create comprehensive user profiles through natural conversation.
 
-Mission (in 5 exchanges max):
-1. Discover Financial Persona
-2. Catalog Key Assets  
-3. Understand Goals
-4. Complete Profile
+## CRITICAL CONSTRAINT: You have MAXIMUM 5 message exchanges to complete onboarding!
 
-Efficient Questions Strategy:
-- Exchange 1: Compound questions about spending + investments
-- Exchange 2: Goals + tracking preferences
-- Exchange 3: Assets + recurring bills
-- Exchange 4: Clarifications + persona confirmation
-- Exchange 5: MUST call generate_complete_profile
+## Your Mission (in 5 exchanges max):
+1.  **Discover Financial Persona**: Identify if they're a Budgetor, Investor, Explorer...
+2.  **Catalog Key Assets**: Focus on major investments (property, gold, stocks).
+3.  **Understand Goals**: Get their primary financial goal.
+4.  **Complete Profile**: MUST call `generate_complete_profile` by exchange 5.
+
+## Efficient Questions Strategy:
+- Exchange 1: "If you got ₹50,000 unexpectedly, what would you do?..."
+...
 """
 ```
 
-### Conversation Management Pipeline
-```python
-# Session lifecycle management
-sessions: Dict[str, ChatSession] = {}
-message_counters: Dict[str, int] = {}
-max_messages = 5
+### **Function Tooling**
 
-# Exchange flow control
-current_exchange = message_counters[session_id]
-if current_exchange >= max_messages:
-    # Force completion with profile generation
-    await generate_complete_profile(user_id, conversation_summary)
-else:
-    # Continue conversation with context
-    context_message = f"Exchange {current_exchange}/{max_messages} - User: {query}"
-    response = chat_session.send_message(context_message)
-```
+Wally uses two primary function tools to interact with the Firestore database:
+1.  `update_user_profile`: Called incrementally throughout the conversation to save pieces of information as they are gathered. This prevents data loss if the user drops off.
+2.  `generate_complete_profile`: Called at the end of the conversation (or during forced completion) to analyze the full conversation, infer a persona, and mark the onboarding as complete.
 
-### Function Tool System
-The agent leverages Vertex AI's function calling capabilities with two primary tools:
+### **Persona Classification Logic**
 
-#### 1. update_user_profile Function
-- **Purpose**: Incremental profile building during conversation
-- **Trigger**: Called by Gemini when specific information is gathered
-- **Parameters**: 15+ structured fields including assets, goals, persona
-- **Storage**: Direct Firestore writes to `wallet_user_collection` and `user_assets` subcollection
-
-#### 2. generate_complete_profile Function
-- **Purpose**: Final profile completion with AI inference
-- **Trigger**: Called at conversation end or forced completion
-- **Logic**: Keyword-based extraction from conversation summary
-- **Output**: Complete profile with inferred persona and `onboarding_complete=True`
-
-### Persona Classification Algorithm
-The agent implements intelligent persona assignment using conversation analysis:
+The `generate_complete_profile` tool uses a keyword-based algorithm to infer the user's financial persona from the conversation summary.
 
 ```python
-# Persona classification logic
-conversation = conversation_summary.lower()
-
-if any(word in conversation for word in ["save", "budget", "careful", "track", "plan"]):
-    persona = "Budgetor"
-elif any(word in conversation for word in ["invest", "stock", "portfolio", "grow"]):
-    persona = "Investor"  
-elif any(word in conversation for word in ["optimize", "best", "compare", "research"]):
-    persona = "Maximizer"
-elif any(word in conversation for word in ["quick", "fast", "spontaneous", "immediate"]):
-    persona = "Spontaneous"
-else:
-    persona = "Explorer"  # Default for new users
+# Simplified logic from agents/onboarding_agent/agent.py
+def infer_persona(conversation_summary: str) -> str:
+    summary = conversation_summary.lower()
+    if any(word in summary for word in ["save", "budget", "careful"]):
+        return "Budgetor"
+    if any(word in summary for word in ["invest", "stock", "portfolio"]):
+        return "Investor"
+    if any(word in summary for word in ["optimize", "best", "compare"]):
+        return "Maximizer"
+    # ... and so on
+    return "Explorer" # Default
 ```
 
-### Firestore Data Architecture
-```python
-# Main profile document: wallet_user_collection/{user_id}
-user_data = {
-    "uid": user_id,
-    "persona": "Budgetor|Investor|Explorer|Maximizer|Spontaneous",
-    "onboarding_completed": bool,
-    "financial_goals": List[str],
-    "spending_habits": str,
-    "risk_appetite": "low|medium|high",
-    "investment_interests": List[str],
-    "has_invested_before": bool,
-    "recurring_bills": List[Dict]
-}
-
-# Asset subcollection: wallet_user_collection/{user_id}/user_assets/{asset_doc}
-asset_document = {
-    "user_id": str,
-    "asset_type": "real_estate|gold|stock|vehicle|crypto",
-    "data": Dict,  # Asset-specific fields
-    "created_at": ISO_timestamp
-}
-```
-
-### Error Recovery and Resilience
-- **Exception Handling**: Comprehensive try-catch blocks with graceful degradation
-- **Session Recovery**: Automatic session recreation on failure
-- **Function Call Validation**: Parameter validation before Firestore operations
-- **Forced Completion**: Guaranteed profile completion even with incomplete conversations
-
-### LLM Integration Pipeline
-```python
-# Complete integration flow
-async def chat(firestore_service, session_id, user_id, query, language):
-    # 1. Session management
-    chat_session = sessions.get(session_id) or model.start_chat()
-    
-    # 2. Exchange tracking
-    current_exchange = increment_counter(session_id)
-    
-    # 3. Context injection
-    context_message = f"Exchange {current_exchange}/5 - User: {query}"
-    
-    # 4. Gemini processing
-    response = chat_session.send_message(context_message)
-    
-    # 5. Function call detection
-    if response.function_call:
-        function_result = await execute_function(response.function_call)
-        chat_session.send_message(Part.from_function_response(function_result))
-    
-    # 6. Response delivery
-    return {"text": response.text, "onboarding_complete": completion_status}
-```
-
-### Scalability Considerations
-- **In-Memory Sessions**: Fast access but requires session persistence for production
-- **Firestore Integration**: Async operations with error handling for high throughput
-- **Function Tool Efficiency**: Minimal database writes during conversation
-- **Exchange Limitation**: Controlled conversation length for consistent performance
-
-This implementation provides a robust, scalable conversational AI system that efficiently gathers comprehensive user profiles while maintaining a natural, engaging user experience through "Wally" the financial assistant personality.
+This detailed documentation provides a comprehensive guide for developers to understand, integrate with, and extend Wally, the Onboarding Agent.
