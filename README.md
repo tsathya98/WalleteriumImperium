@@ -638,7 +638,6 @@ graph TD
         B(Async_API_Layer)
         B -->|/api/v1/receipts| RS[Receipt_Scanner_Agent]
         B -->|/api/v1/onboarding| OB[Onboarding_Agent]
-        B -->|/api/v1/weather| WB[Weather_Bot_Agent]
         B -.->|/api/v1/health| HC[Health_Endpoints]
     end
     RS --> VAI[Vertex_AI_Gemini_2.5_Flash_Vision]
@@ -669,21 +668,6 @@ sequenceDiagram
     API-->>Client: progress / final result
 ```
 
-### 🔀 Sequence Diagram – Weather Agent
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant Weather
-    participant Gemini
-    Client->>API: GET /api/v1/weather?city=London
-    API->>Weather: get_weather(London)
-    Weather->>Gemini: generateContent(system_prompt,city)
-    Gemini-->>Weather: report
-    Weather-->>API: report
-    API-->>Client: weather JSON
-```
-
 _The Onboarding Agent sequence is documented in `agents/onboarding_agent/README.md`._
 
 ### 🧬 LLM Calls & Agent Configuration
@@ -692,7 +676,6 @@ _The Onboarding Agent sequence is documented in `agents/onboarding_agent/README.
 |-------|-------|-------------|-----------------|--------|
 | Onboarding | gemini-2.5-flash | 1 | 2k / 256 | No |
 | Receipt Scanner | gemini-2.5-flash | 1 | 4k / 512 | Yes |
-| Weather Bot | gemini-2.5-flash | 1 | 1k / 128 | No |
 
 Each agent is powered by the Google **Agent Development Kit (ADK)** and exposes domain-specific **tools**. The FastAPI layer orchestrates tool execution, persists state in Firestore, and keeps every container stateless and Cloud-Run-friendly.
 
