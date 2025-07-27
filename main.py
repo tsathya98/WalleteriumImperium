@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 # Add project root to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.api import receipts, health
+from app.api import receipts, health, transactions
 from app.api import onboarding as onboarding_api
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -142,6 +142,9 @@ app.include_router(receipts.router, prefix="/api/v1/receipts", tags=["receipts"]
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(
     onboarding_api.router, prefix="/api/v1/onboarding", tags=["onboarding"]
+)
+app.include_router(
+    transactions.router, prefix="/api/v1", tags=["transactions"]
 )
 
 

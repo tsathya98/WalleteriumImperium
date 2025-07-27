@@ -7,6 +7,7 @@ MVP: Simplified operations for receipt analysis data
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta, timezone
 import uuid
+import asyncio
 
 from google.cloud import firestore
 from google.cloud.firestore import AsyncClient
@@ -458,6 +459,176 @@ class FirestoreService:
         except Exception as e:
             logger.error(f"Firestore health check failed: {e}")
             return {"status": "unhealthy", "error": str(e)}
+
+    # Transaction RAG Operations
+    async def save_transaction_with_rag_indexing(self, transaction_data: Dict[str, Any]) -> str:
+        """
+        Save a transaction to Firestore and automatically index it for RAG
+        
+        Args:
+            transaction_data: Transaction data to save
+            
+        Returns:
+            str: Transaction ID
+        """
+        self._ensure_initialized()
+        
+        try:
+            # Generate transaction ID if not provided
+            transaction_id = transaction_data.get('receipt_id', str(uuid.uuid4()))
+            transaction_data['receipt_id'] = transaction_id
+            
+            # Add timestamps
+            transaction_data.update({
+                'created_at': datetime.utcnow(),
+                'updated_at': datetime.utcnow()
+            })
+            
+            # Save to Firestore
+            doc_ref = self.client.collection("transactions").document(transaction_id)
+            await doc_ref.set(transaction_data)
+            
+            logger.info(f"Transaction saved: {transaction_id}")
+            
+            # Auto-index for RAG (async, don't wait)
+            asyncio.create_task(self._auto_index_transaction(transaction_data))
+            
+            return transaction_id
+            
+        except Exception as e:
+            logger.error(f"Failed to save transaction: {e}")
+            raise
+    
+    async def update_transaction_with_rag_indexing(self, transaction_id: str, update_data: Dict[str, Any]) -> bool:
+        """
+        Update a transaction and re-index it for RAG
+        
+        Args:
+            transaction_id: Transaction ID to update
+            update_data: Data to update
+            
+        Returns:
+            bool: Success status
+        """
+        self._ensure_initialized()
+        
+        try:
+            # Add update timestamp
+            update_data['updated_at'] = datetime.utcnow()
+            
+            # Update in Firestore
+            doc_ref = self.client.collection("transactions").document(transaction_id)
+            await doc_ref.update(update_data)
+            
+            # Get updated document for re-indexing
+            updated_doc = await doc_ref.get()
+            if updated_doc.exists:
+                transaction_data = updated_doc.to_dict()
+                
+                # Re-index for RAG (async, don't wait)
+                asyncio.create_task(self._auto_index_transaction(transaction_data))
+                
+                logger.info(f"Transaction updated and re-indexed: {transaction_id}")
+                return True
+            else:
+                logger.warning(f"Transaction not found for update: {transaction_id}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Failed to update transaction {transaction_id}: {e}")
+            raise
+    
+    async def _auto_index_transaction(self, transaction_data: Dict[str, Any]):
+        """
+        Automatically index a transaction for RAG (background task)
+        
+        Args:
+            transaction_data: Transaction data to index
+        """
+        try:
+            # Import here to avoid circular imports
+            from agents.transaction_rag_agent.agent import get_transaction_rag_agent
+            
+            # Get RAG agent and index the transaction
+            rag_agent = await get_transaction_rag_agent()
+            success = await rag_agent.index_transaction(transaction_data)
+            
+            if success:
+                logger.info(f"Auto-indexed transaction: {transaction_data.get('receipt_id')}")
+            else:
+                logger.warning(f"Failed to auto-index transaction: {transaction_data.get('receipt_id')}")
+                
+        except Exception as e:
+            logger.error(f"Auto-indexing failed for transaction {transaction_data.get('receipt_id')}: {e}")
+            # Don't raise - this is a background task and shouldn't affect the main operation
+    
+    async def get_transaction(self, transaction_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a single transaction by ID
+        
+        Args:
+            transaction_id: Transaction ID
+            
+        Returns:
+            Optional[Dict]: Transaction data or None if not found
+        """
+        self._ensure_initialized()
+        
+        try:
+            doc_ref = self.client.collection("transactions").document(transaction_id)
+            doc = await doc_ref.get()
+            
+            if doc.exists:
+                return doc.to_dict()
+            else:
+                return None
+                
+        except Exception as e:
+            logger.error(f"Failed to get transaction {transaction_id}: {e}")
+            raise
+    
+    async def get_transactions_for_user(
+        self, 
+        user_id: str, 
+        limit: int = 100,
+        start_after: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get transactions for a specific user
+        
+        Args:
+            user_id: User ID
+            limit: Maximum number of transactions to return
+            start_after: Transaction ID to start after (for pagination)
+            
+        Returns:
+            List[Dict]: List of transactions
+        """
+        self._ensure_initialized()
+        
+        try:
+            query = self.client.collection("transactions").where("user_id", "==", user_id).limit(limit)
+            
+            if start_after:
+                # Get the document to start after
+                start_doc = await self.client.collection("transactions").document(start_after).get()
+                if start_doc.exists:
+                    query = query.start_after(start_doc)
+            
+            docs = query.stream()
+            transactions = []
+            
+            async for doc in docs:
+                transaction_data = doc.to_dict()
+                transaction_data['id'] = doc.id
+                transactions.append(transaction_data)
+            
+            logger.info(f"Retrieved {len(transactions)} transactions for user {user_id}")
+            return transactions
+            
+        except Exception as e:
+            logger.error(f"Failed to get transactions for user {user_id}: {e}")
+            raise
 
     async def close(self):
         """Close Firestore connection"""
