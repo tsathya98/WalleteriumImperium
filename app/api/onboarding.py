@@ -1,51 +1,55 @@
 # app/api/onboarding.py
-
+import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict
 
-from agents.onboarding_agent.agent import onboarding_agent, user_profiles
+from agents.onboarding_agent.agent import get_onboarding_agent, user_profiles
 from agents.onboarding_agent.schemas import OnboardingRequest
 
 router = APIRouter()
-
-# In-memory session store.
-# In a production environment, this would be replaced with a real session store like Redis.
-sessions: Dict[str, str] = {}
-
+logger = logging.getLogger(__name__)
 
 class OnboardingResponse(BaseModel):
     response: str
     session_id: str
+    onboarding_complete: bool = False
 
 
 @router.post("/chat", response_model=OnboardingResponse)
 async def chat_with_onboarding_agent(request: OnboardingRequest):
     """
     Handles a chat interaction with the onboarding agent.
+    If the user's query is empty, it initiates the conversation.
     """
+    agent = get_onboarding_agent()
     session_id = request.session_id
-    conversation_history = sessions.get(session_id, "")
-    full_query = f"{conversation_history}\nUser: {request.query}"
+    logger.info(f"Received chat request for session_id: {session_id}, user_id: {request.user_id}")
+    
+    query = request.query
+    if not query:
+        # This is the very beginning of the conversation.
+        query = "Hello! Please introduce yourself and start the onboarding process."
+        logger.info("Empty query on new session. Initiating conversation.")
 
     try:
-        # Format the instruction with the user's language
-        formatted_instruction = onboarding_agent.instruction.format(
+        logger.info(f"Invoking onboarding agent for session_id: {session_id}")
+        agent_result = await agent.chat(
+            session_id=session_id,
+            user_id=request.user_id,
+            query=query,
             language=request.language
         )
+        logger.info(f"Agent returned response for session_id: {session_id}")
 
-        # Create a temporary agent with the formatted instruction
-        temp_agent = onboarding_agent.with_instruction(formatted_instruction)
-
-        # Invoke the agent with the full query
-        agent_response = await temp_agent.invoke_async(full_query)
-
-        # Update the conversation history
-        sessions[session_id] = f"{full_query}\nAgent: {agent_response}"
-
-        return OnboardingResponse(response=agent_response, session_id=session_id)
+        return OnboardingResponse(
+            response=agent_result["text"],
+            session_id=session_id,
+            onboarding_complete=agent_result["onboarding_complete"],
+        )
 
     except Exception as e:
+        logger.error(f"Error during chat for session_id: {session_id} - {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

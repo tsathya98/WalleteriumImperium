@@ -96,7 +96,7 @@ class OnboardingRequest(BaseModel):
     """
 
     user_id: str = Field(..., description="The unique identifier for the user.")
-    query: str = Field(..., description="The user's message.")
+    query: Optional[str] = Field("", description="The user's message. Leave empty to start the conversation.")
     language: str = Field("en", description="The language of the conversation.")
     session_id: str = Field(
         ..., description="A unique identifier for the conversation session."
