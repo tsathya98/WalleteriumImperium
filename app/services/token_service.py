@@ -155,3 +155,40 @@ class TokenService:
             await self._firestore_service.close()
         self._initialized = False
         logger.info("Token service shutdown complete.")
+
+    async def health_check(self) -> Dict[str, Any]:
+        """Health check for Token service"""
+        try:
+            # Check initialization status
+            if not self._initialized:
+                logger.warning("Token service health check: Service not initialized")
+                return {"status": "unhealthy", "error": "Not initialized"}
+
+            if not self._firestore_service:
+                logger.warning("Token service health check: Firestore service not available")
+                return {"status": "unhealthy", "error": "Firestore service dependency missing"}
+
+            # Check firestore dependency
+            firestore_health = await self._firestore_service.health_check()
+            if firestore_health.get("status") != "healthy":
+                logger.warning("Token service health check: Firestore dependency unhealthy")
+                return {
+                    "status": "unhealthy",
+                    "error": "Firestore dependency unhealthy",
+                    "dependency_status": firestore_health
+                }
+
+            # Check active processing tasks
+            active_tasks = len(self._processing_tasks)
+
+            logger.debug(f"Token service health check: {active_tasks} active processing tasks")
+
+            return {
+                "status": "healthy",
+                "active_processing_tasks": active_tasks,
+                "firestore_dependency": "healthy"
+            }
+
+        except Exception as e:
+            logger.error(f"Token service health check failed: {e}")
+            return {"status": "unhealthy", "error": str(e)}
