@@ -1,6 +1,19 @@
 
 # Walleterium Imperium: AI-Powered Financial Wellness Platform
 
+## 🏆 Hackathon Showcase: Key Results
+
+Here's a quick showcase of what Walleterium Imperium can do. These images highlight the core features and user interactions.
+
+### Onboarding and Profile Creation
+![Onboarding-1](docs/git_artifacts/1.jpg)
+![Onboarding-2](docs/git_artifacts/2.jpg)
+
+### Receipt Scanning and Analysis
+![Receipt-1](docs/git_artifacts/3.jpg)
+![Receipt-2](docs/git_artifacts/4.jpg)
+![Receipt-3](docs/git_artifacts/5.jpg)
+
 **A Production-Ready, Multi-Agent Financial Assistant powered by FastAPI, Google Gemini, and Google Cloud**
 
 Walleterium Imperium is an intelligent, multi-agent platform designed to provide users with a seamless and conversational financial management experience. It goes beyond simple expense tracking by combining a friendly **Onboarding Agent** to build a personalized user profile with a powerful **Receipt Scanner Agent** to automate data entry.
