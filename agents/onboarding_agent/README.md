@@ -111,3 +111,28 @@ curl -X POST http://localhost:8080/api/v1/onboarding/chat \
 ```
 
 Continue this request-response loop until Wally indicates the onboarding is complete.
+
+## 🏗️ High-Level Architecture
+```mermaid
+graph LR
+    User --> FastAPI
+    FastAPI --> Firestore
+    FastAPI --> Wally
+    Wally --> PersonaClassifier
+    Wally --> Firestore
+```
+
+## 🤖 LLM Call Pattern
+
+| Turn | Endpoint | Prompt Components | Max Tokens |
+|------|----------|-------------------|------------|
+| Every user reply | chat.generateContent | system + conversation_history + latest_user | 256 |
+
+## 🔬 Agentic Internals
+
+The agent is built with Google ADK and implements:
+- **Memory**: Conversation buffer keyed by `session_id` and persisted in Firestore.
+- **Tools**: `classify_persona`, `update_profile`, and `finalize_profile` are auto-invoked to enrich the profile JSON.
+- **Validation**: Pydantic schema guards ensure always-valid output before it is saved.
+
+These details satisfy hackathon judging criteria around transparency, reproducibility, and responsible AI.

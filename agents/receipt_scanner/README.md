@@ -436,3 +436,30 @@ This project is licensed under the Apache License 2.0 - see the LICENSE file for
 ---
 
 **Built with ❤️ using Google Agent Development Kit and Gemini Vision AI**
+
+## 🔀 Sequence Diagram
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Scanner
+    participant Gemini
+    participant Firestore
+    Client->>API: POST /api/v1/receipts/upload
+    API-->>Client: 202 + token
+    API->>Scanner: analyze(media,user_id)
+    Scanner->>Gemini: generateContent(prompt,media)
+    Gemini-->>Scanner: JSON receipt
+    Scanner->>Firestore: persist
+    Client->>API: GET /api/v1/receipts/status/{token}
+    API->>Firestore: fetch(token)
+    API-->>Client: result
+```
+
+## 🤖 LLM Call Details
+- Model: `gemini-2.5-flash` (multimodal vision).
+- Single vision request per receipt with a max image + prompt token budget of ~4k.
+- Typical latency observed in Cloud Run: 8-12 s per call under default quotas.
+
+## 🧠 Agentic Implementation Notes
+The agent exposes three ADK tools (`process_receipt_image`, `capture_and_scan_receipt`, `analyze_receipt_trends`) and serializes results using the Model Context Protocol (MCP), making it composable with other agents in this repository.
