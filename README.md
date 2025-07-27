@@ -78,11 +78,11 @@ graph LR
     
     D --> F[Start/Continue Chat Session];
     F --> G{Need to call a tool?};
-    G -- Yes --> H[Execute Function Tool (e.g., update_profile)];
+    G -- Yes --> H[Execute Function Tool];
     H --> I[Save/Update Profile in Firestore];
     G -- No --> J[Generate Conversational Response];
     
-    E --> K[Analyze Receipt Media (Image/Video)];
+    E --> K[Analyze Receipt Media];
     K --> L[Extract Structured JSON from Gemini];
     L --> M[Save Receipt Data to Firestore];
 
