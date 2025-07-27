@@ -16,7 +16,7 @@ google-auth-oauthlib
 google-cloud-aiplatform
 
 # Vertex AI RAG Engine (preview features)
-google-cloud-aiplatform[preview]
+google-cloud-aiplatform[preview]>=1.55.0
 
 # Google Cloud services
 google-cloud-firestore

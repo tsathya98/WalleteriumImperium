@@ -61,7 +61,7 @@ def test_chat_query(query: str) -> Dict[str, Any]:
         print(f"\n💬 Query: '{query}'")
         print("🔄 Processing...")
         
-        response = requests.post(url, json=payload, timeout=30)
+        response = requests.post(url, json=payload, timeout=60)  # Increased timeout for RAG
         
         if response.status_code == 200:
             return response.json()
@@ -175,6 +175,7 @@ def main():
     
     # Test 3: Bulk indexing (if no transactions are indexed)
     print_header("3️⃣  Bulk Transaction Indexing")
+    print("ℹ️  Note: RAG corpus setup may take a few minutes on first run")
     index_result = test_bulk_indexing()
     if "error" not in index_result:
         total = index_result.get('total_processed', 0)
@@ -191,6 +192,8 @@ def main():
             print("💡 You can add dummy transactions with: python scripts/populate_dummy_transactions.py")
     else:
         print("⚠️  Bulk indexing encountered issues")
+        print("ℹ️  This might be due to RAG corpus initialization taking time. Try again in a few minutes.")
+        print("ℹ️  The system will still work for basic queries without RAG until indexing completes.")
     
     # Test 4: Sample queries
     print_header("4️⃣  Natural Language Query Tests")

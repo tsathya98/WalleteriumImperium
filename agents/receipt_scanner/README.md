@@ -435,6 +435,210 @@ This project is licensed under the Apache License 2.0 - see the LICENSE file for
 
 ---
 
+## 🚀 Frontend Integration Guide
+
+This guide provides instructions for frontend applications to interact with the WalleteriumImperium API.
+
+### **Core API Endpoints**
+
+| **Endpoint** | **Method** | **Description** |
+|--------------|------------|-----------------|
+| `/api/v1/receipts/upload` | POST | Upload receipt for analysis |
+| `/api/v1/receipts/status/{token}` | GET | Check processing status |
+| `/api/v1/receipts/history/{user_id}` | GET | Get user's receipt history |
+| `/api/v1/receipts/{receipt_id}` | GET | Get detailed receipt information |
+
+### **Integration Flow: Step-by-Step**
+
+Here's the recommended workflow for a seamless user experience:
+
+1.  **User Uploads Receipt**: The user selects an image or video file and a `user_id` is provided.
+2.  **Call `/upload` Endpoint**: Your frontend sends the file and `user_id` to the `/upload` endpoint.
+3.  **Receive Processing Token**: The API will immediately respond with a `processing_token`.
+4.  **Poll for Status**: Use the `processing_token` to periodically call the `/status/{token}` endpoint until the status is `completed` or `failed`.
+5.  **Display Results**: Once completed, the response from the status endpoint will contain the full analysis results.
+
+### **Code Examples**
+
+#### **cURL Example**
+```bash
+# 1. Upload the receipt and get a token
+curl -X POST "http://localhost:8080/api/v1/receipts/upload" \
+  -F "file=@/path/to/your/receipt.jpg" \
+  -F "user_id=hackathon_user_123"
+
+# Response will be like:
+# {"processing_token":"abc-123","estimated_time":15,"status":"uploaded",...}
+
+# 2. Poll for the result
+curl "http://localhost:8080/api/v1/receipts/status/abc-123"
+
+# 3. Get user history
+curl "http://localhost:8080/api/v1/receipts/history/hackathon_user_123"
+```
+
+#### **JavaScript (fetch) Example**
+```javascript
+const API_BASE_URL = 'http://localhost:8080/api/v1';
+
+// Step 1: Upload a receipt
+const uploadReceipt = async (file, userId) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('user_id', userId);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/receipts/upload`, {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
+        console.log('Upload initiated:', data);
+        return data.processing_token; // Return the token for polling
+    } catch (error) {
+        console.error('Upload failed:', error);
+    }
+};
+
+// Step 2: Poll for the result
+const checkStatus = async (token) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/receipts/status/${token}`);
+        const data = await response.json();
+
+        if (data.status === 'completed') {
+            console.log('Analysis complete:', data.result);
+            // Update your UI with the results here
+        } else if (data.status === 'processing' || data.status === 'uploaded') {
+            console.log('Still processing...', data.progress);
+            // Continue polling after a delay
+            setTimeout(() => checkStatus(token), 3000); // Poll every 3 seconds
+        } else {
+            console.error('Processing failed:', data.error);
+        }
+    } catch (error) {
+        console.error('Status check failed:', error);
+    }
+};
+
+// Example Usage
+const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    const userId = 'hackathon_user_123'; // Get this from your auth system or user input
+
+    if (file && userId) {
+        const token = await uploadReceipt(file, userId);
+        if (token) {
+            checkStatus(token);
+        }
+    }
+};
+```
+
+#### **Flutter (Dart) Example**
+This example provides a service class and a widget to handle file uploads and status polling.
+
+**1. Add Dependencies to `pubspec.yaml`**
+```yaml
+dependencies:
+  http: ^1.2.1
+  image_picker: ^1.1.2
+  http_parser: ^4.0.2
+```
+
+**2. Create an `ApiService`**
+```dart
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+
+class ApiService {
+  static const String _baseUrl = 'http://YOUR_API_BASE_URL'; // Replace with your URL
+
+  static Future<String?> uploadReceipt(File imageFile, String userId) async {
+    final uri = Uri.parse('$_baseUrl/api/v1/receipts/upload');
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['user_id'] = userId
+      ..files.add(await http.MultipartFile.fromPath(
+        'file',
+        imageFile.path,
+        contentType: MediaType('image', 'jpeg'),
+      ));
+
+    final response = await request.send();
+    if (response.statusCode == 202) {
+      final responseBody = await response.stream.bytesToString();
+      return jsonDecode(responseBody)['processing_token'];
+    }
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> checkStatus(String token) async {
+    final uri = Uri.parse('$_baseUrl/api/v1/receipts/status/$token');
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return null;
+  }
+}
+```
+
+**3. Create the UI Widget**
+```dart
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+// ... import your ApiService
+
+class ReceiptUploaderScreen extends StatefulWidget {
+  @override
+  _ReceiptUploaderScreenState createState() => _ReceiptUploaderScreenState();
+}
+
+class _ReceiptUploaderScreenState extends State<ReceiptUploaderScreen> {
+  String _statusMessage = 'Upload a receipt to begin.';
+  bool _isLoading = false;
+
+  void _handleUpload() async {
+    final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (image == null) return;
+
+    setState(() {
+      _isLoading = true;
+      _statusMessage = 'Uploading...';
+    });
+
+    final token = await ApiService.uploadReceipt(File(image.path), 'hackathon_user');
+    if (token != null) {
+      setState(() => _statusMessage = 'Processing...');
+      _pollForResult(token);
+    } else {
+      setState(() => _statusMessage = 'Upload failed.');
+    }
+  }
+
+  void _pollForResult(String token) async {
+    while (_isLoading) {
+      final response = await ApiService.checkStatus(token);
+      if (response != null && response['status'] == 'completed') {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = 'Success! Store: ${response['result']['place']}';
+        });
+        return;
+      }
+      await Future.delayed(Duration(seconds: 3));
+    }
+  }
+
+  // ... rest of your widget build method
+}
+```
+
+---
+
 **Built with ❤️ using Google Agent Development Kit and Gemini Vision AI**
 
 ## 🔀 Detailed LLM Pipeline Sequence Diagram

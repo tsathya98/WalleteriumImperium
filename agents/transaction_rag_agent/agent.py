@@ -149,8 +149,9 @@ class TransactionRAGAgent:
                     temp_file_path = temp_file.name
                 
                 # Upload the file to the RAG corpus
+                corpus_name = f"projects/{settings.GOOGLE_CLOUD_PROJECT_ID}/locations/{settings.VERTEX_AI_LOCATION}/ragCorpora/{self.rag_corpus.corpus_id}"
                 rag.upload_file(
-                    corpus_name=self.rag_corpus.display_name,
+                    corpus_name=corpus_name,
                     path=temp_file_path,
                     display_name=f"Transaction - {transaction_data.get('place', 'Unknown')} - ${transaction_data.get('amount', 0)}",
                     description=f"Transaction at {transaction_data.get('place')} on {transaction_data.get('time', 'Unknown date')}"
@@ -236,6 +237,57 @@ ANALYSIS CONTEXT:
 
         return content
     
+    def _classify_query(self, query: str) -> str:
+        """
+        Classify the user's query into a specific type.
+        
+        Args:
+            query: The user's natural language query.
+            
+        Returns:
+            The classified query type.
+        """
+        query_lower = query.lower()
+        
+        # Spending analysis
+        if any(keyword in query_lower for keyword in ["how much", "spent", "total spending"]):
+            return "spending_analysis"
+            
+        # Category breakdown
+        if any(keyword in query_lower for keyword in ["category", "categories", "breakdown"]):
+            return "category_breakdown"
+            
+        # Time-based analysis
+        if any(keyword in query_lower for keyword in ["last month", "this week", "daily", "monthly", "yearly"]):
+            return "time_analysis"
+            
+        # Merchant analysis
+        if any(keyword in query_lower for keyword in ["merchant", "store", "where did i shop"]):
+            return "merchant_analysis"
+            
+        # Item search
+        if any(keyword in query_lower for keyword in ["what did i buy", "item", "product"]):
+            return "item_search"
+            
+        # Budget insights
+        if any(keyword in query_lower for keyword in ["budget", "over budget", "under budget"]):
+            return "budget_insights"
+            
+        # Trend analysis
+        if any(keyword in query_lower for keyword in ["trend", "pattern", "spending habit"]):
+            return "trend_analysis"
+            
+        # Comparison
+        if any(keyword in query_lower for keyword in ["compare", "vs", "versus"]):
+            return "comparison"
+
+        # General transaction search
+        if any(keyword in query_lower for keyword in ["find transaction", "search for", "show me transactions"]):
+            return "transaction_search"
+            
+        # Default to general query
+        return "general_query"
+
     async def query_transactions(
         self,
         session_id: str,
@@ -259,31 +311,37 @@ ANALYSIS CONTEXT:
             if not self._initialized:
                 await self.initialize()
             
+            # Create RAG retrieval tool using the correct API
+            rag_retrieval_tool = Tool.from_retrieval(
+                retrieval=rag.Retrieval(
+                    source=rag.VertexRagStore(
+                        rag_resources=[
+                            rag.RagResource(
+                                rag_corpus=f"projects/{settings.GOOGLE_CLOUD_PROJECT_ID}/locations/{settings.VERTEX_AI_LOCATION}/ragCorpora/{self.rag_corpus.corpus_id}"
+                            )
+                        ],
+                        rag_retrieval_config=rag.RagRetrievalConfig(
+                            top_k=10,  # Retrieve top 10 relevant transactions
+                            filter=rag.utils.resources.Filter(vector_distance_threshold=0.3)
+                        )
+                    )
+                )
+            )
+            
+            # Create model with RAG retrieval tool
+            rag_model = GenerativeModel(
+                model_name=settings.VERTEX_AI_MODEL,
+                tools=[rag_retrieval_tool],
+                system_instruction=TRANSACTION_RAG_SYSTEM_INSTRUCTION
+            )
+            
             # Get or create chat session
             if session_id not in self.sessions:
-                self.sessions[session_id] = self.model.start_chat()
+                self.sessions[session_id] = rag_model.start_chat()
             
             chat_session = self.sessions[session_id]
             
-            # Create RAG retrieval tool
-            rag_resource = rag.RagResource(
-                rag_corpus=f"projects/{settings.GOOGLE_CLOUD_PROJECT_ID}/locations/{settings.VERTEX_AI_LOCATION}/ragCorpora/{self.rag_corpus.corpus_id}"
-            )
-            
-            rag_retrieval_tool = rag.create_rag_retrieval_tool(
-                rag_resources=[rag_resource],
-                similarity_top_k=10,  # Retrieve top 10 relevant transactions
-                vector_distance_threshold=0.3
-            )
-            
-            # Create grounding source from RAG
-            grounding_source = grounding.VertexAISearch(
-                data_store_id=self.rag_corpus.corpus_id,
-                project=settings.GOOGLE_CLOUD_PROJECT_ID,
-                location=settings.VERTEX_AI_LOCATION
-            )
-            
-            # Send query with RAG context
+            # Send query with context
             context_message = f"""User Query: {query}
 
 Please analyze the user's transaction data to answer their question. Focus on:
@@ -296,10 +354,7 @@ User ID: {user_id}
 Session ID: {session_id}
 Language: {language}"""
 
-            response = chat_session.send_message(
-                context_message,
-                tools=[rag_retrieval_tool]
-            )
+            response = chat_session.send_message(context_message)
             
             # Format response
             response_text = response.text if hasattr(response, 'text') else str(response)
@@ -308,19 +363,23 @@ Language: {language}"""
             grounding_sources = []
             if hasattr(response, 'candidates') and response.candidates:
                 candidate = response.candidates[0]
-                if hasattr(candidate, 'grounding_metadata'):
-                    for source in candidate.grounding_metadata.grounding_supports:
-                        grounding_sources.append({
-                            "title": getattr(source, 'title', 'Transaction'),
-                            "uri": getattr(source, 'uri', ''),
-                            "snippet": getattr(source, 'text', '')
-                        })
+                if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
+                    if hasattr(candidate.grounding_metadata, 'grounding_supports'):
+                        for source in candidate.grounding_metadata.grounding_supports:
+                            grounding_sources.append({
+                                "title": getattr(source, 'title', 'Transaction'),
+                                "uri": getattr(source, 'uri', ''),
+                                "snippet": getattr(source, 'text', '')
+                            })
             
+            # Classify the query to determine the correct type
+            query_type = self._classify_query(query)
+
             return TransactionRAGResponse(
                 response=response_text,
                 session_id=session_id,
                 sources=grounding_sources,
-                query_type="transaction_analysis",
+                query_type=query_type,
                 confidence=0.9,  # High confidence with RAG
                 language=language
             )
@@ -362,11 +421,17 @@ Language: {language}"""
             failed_count = 0
             total_processed = 0
             
-            # Process in batches
-            async for batch in self._get_transaction_batches(transactions_ref, batch_size):
+            # Collect all transactions first
+            all_transactions = []
+            async for doc in transactions_ref.stream():
+                all_transactions.append(doc.to_dict())
+            
+            # Process transactions in batches
+            for i in range(0, len(all_transactions), batch_size):
+                batch = all_transactions[i:i + batch_size]
+                
                 batch_results = await asyncio.gather(
-                    *[self.index_transaction(transaction.to_dict()) 
-                      for transaction in batch],
+                    *[self.index_transaction(transaction) for transaction in batch],
                     return_exceptions=True
                 )
                 
@@ -381,13 +446,16 @@ Language: {language}"""
                         failed_count += 1
                 
                 logger.info(f"Processed batch: {indexed_count}/{total_processed} successful")
+                
+                # Small delay between batches to avoid rate limiting
+                await asyncio.sleep(1)
             
             results = {
                 "total_processed": total_processed,
                 "successfully_indexed": indexed_count,
                 "failed": failed_count,
                 "success_rate": indexed_count / total_processed if total_processed > 0 else 0,
-                "corpus_id": self.rag_corpus.corpus_id
+                "corpus_id": self.rag_corpus.corpus_id if self.rag_corpus else "unknown"
             }
             
             logger.info(f"✅ Transaction indexing complete: {results}")
@@ -397,19 +465,7 @@ Language: {language}"""
             logger.error(f"❌ Failed to index all transactions: {e}")
             raise
     
-    async def _get_transaction_batches(self, transactions_ref, batch_size: int):
-        """Generator for transaction batches"""
-        docs = transactions_ref.stream()
-        batch = []
-        
-        async for doc in docs:
-            batch.append(doc)
-            if len(batch) >= batch_size:
-                yield batch
-                batch = []
-        
-        if batch:  # Process remaining documents
-            yield batch
+
 
 
 # Global agent instance

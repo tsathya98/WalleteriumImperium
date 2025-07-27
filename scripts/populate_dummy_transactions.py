@@ -11,6 +11,9 @@ from typing import List, Dict, Any
 
 from google.cloud import firestore
 
+# Constant UID for all transactions
+USER_ID = "ZGaNeQyyQwMSoyZUlMTGSbqx97E2"  # Change this to your desired UID
+
 # Realistic business data
 RESTAURANTS = [
     {"name": "El Chalan Restaurant", "type": "peruvian", "avg_price": 35},
@@ -210,6 +213,7 @@ def generate_restaurant_receipt(transaction_type: str) -> Dict[str, Any]:
     
     return {
         "receipt_id": str(uuid.uuid4()),
+        "uid": USER_ID,
         "place": restaurant["name"],
         "time": generate_random_timestamp().isoformat() + "Z",
         "amount": total_amount,
@@ -266,6 +270,7 @@ def generate_grocery_receipt(transaction_type: str) -> Dict[str, Any]:
     
     return {
         "receipt_id": str(uuid.uuid4()),
+        "uid": USER_ID,
         "place": store["name"],
         "time": generate_random_timestamp().isoformat() + "Z",
         "amount": total_amount,
@@ -309,6 +314,7 @@ def generate_gas_receipt(transaction_type: str) -> Dict[str, Any]:
     
     return {
         "receipt_id": str(uuid.uuid4()),
+        "uid": USER_ID,
         "place": station["name"],
         "time": generate_random_timestamp().isoformat() + "Z",
         "amount": total_amount,
@@ -365,6 +371,7 @@ def generate_pharmacy_receipt(transaction_type: str) -> Dict[str, Any]:
     
     return {
         "receipt_id": str(uuid.uuid4()),
+        "uid": USER_ID,
         "place": pharmacy["name"],
         "time": generate_random_timestamp().isoformat() + "Z",
         "amount": total_amount,
@@ -421,6 +428,7 @@ def generate_clothing_receipt(transaction_type: str) -> Dict[str, Any]:
     
     return {
         "receipt_id": str(uuid.uuid4()),
+        "uid": USER_ID,
         "place": store["name"],
         "time": generate_random_timestamp().isoformat() + "Z",
         "amount": total_amount,
@@ -463,7 +471,7 @@ async def populate_transactions():
     # Initialize Firestore client
     client = firestore.AsyncClient(project="walleterium")
     
-    print("🚀 Starting to populate 100 dummy transactions...")
+    print(f"🚀 Starting to populate 100 dummy transactions for user: {USER_ID}...")
     
     batch_size = 10
     total_created = 0

@@ -169,6 +169,46 @@ status = await firestore_service.get_token(token)
 # → Client receives current status and results
 ```
 
+### **Sequence of Events**
+
+Here is a step-by-step visualization of the entire process from upload to result:
+
+```mermaid
+sequenceDiagram
+    participant Client as 📱 Client<br>(Flutter/Browser)
+    participant FastAPI as 🌐 FastAPI Backend<br>(/upload endpoint)
+    participant TokenService as 🎫 Token Service
+    participant VertexAIService as 🤖 Vertex AI Service
+    participant Gemini as ✨ Gemini 2.5 Flash
+    participant Firestore as 🔥 Firestore DB
+
+    Client->>+FastAPI: POST /upload (multipart file)
+    FastAPI->>+TokenService: create_processing_token(file_bytes)
+    TokenService->>+Firestore: create_token(user_id)
+    Firestore-->>-TokenService: token_id
+    TokenService-->>-FastAPI: return token_id
+    FastAPI-->>-Client: 202 Accepted (token_id)
+
+    Note over TokenService,Firestore: Background processing starts...
+    TokenService->>+VertexAIService: analyze_receipt_media(file_bytes)
+    VertexAIService->>VertexAIService: 1. Create Optimized Prompt
+    VertexAIService->>VertexAIService: 2. Define JSON Schema
+    VertexAIService->>+Gemini: 3. Send (Prompt + Schema + Media)
+    Gemini-->>-VertexAIService: 4. Return Structured JSON
+    VertexAIService-->>-TokenService: Detailed AI Result (JSON)
+
+    TokenService->>TokenService: 5. Transform AI JSON to App Model
+    TokenService->>+Firestore: 6. Update token with final result
+    Firestore-->>-TokenService: Acknowledge update
+
+    loop Periodically
+        Client->>+FastAPI: GET /status/{token_id}
+        FastAPI->>+Firestore: get_token_status(token_id)
+        Firestore-->>-FastAPI: Return current status/result
+        FastAPI-->>-Client: Return final JSON result
+    end
+```
+
 ---
 
 ## ⚡ **Performance Analysis & Insights**
