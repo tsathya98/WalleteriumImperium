@@ -1,0 +1,55 @@
+Agentic AI Day: Developer Resource Guide (What all will be provided during hackathon)
+This guide provides direct links to the official documentation and product pages for the core Google technologies you can use to build robust and scalable solutions.
+
+Core AI Platform & Models
+Google AI for Developers
+Description: The central hub for exploring all of Google's AI models and tools, including Gemini and Gemma.
+Link: https://ai.google.dev/
+Vertex AI
+Description: Google Cloud's unified AI platform to build, deploy, and scale machine learning models. It provides access to Gemini, Vision, Speech, and Forecasting services.
+Link: https://cloud.google.com/vertex-ai
+Gemini API on Vertex AI
+Description: Access Google's most capable multimodal models to understand and process text, images, audio, and video for advanced reasoning and summarization.
+Link: https://cloud.google.com/vertex-ai/generative-ai/docs/cookbook
+Gemma
+Description: A family of lightweight, state-of-the-art open models from Google that can be fine-tuned and deployed on Google Cloud.
+Link: https://ai.google.dev/gemma
+
+Application Platform & Backend
+Firebase
+Description: A comprehensive platform for building web and mobile apps. Includes a real-time database (Firestore), user authentication, cloud functions, and hosting.
+Link: https://firebase.google.com/
+Firebase Studio
+Description: A new environment within Firebase designed to accelerate app development with AI-powered assistance. Using Firebase Studio is eligible for a special prize.
+Link: Keep an eye on the official Firebase Blog for the latest announcements: https://firebase.blog/
+
+Additional Google Cloud Services
+Compute & Hosting
+Cloud Run
+Description: A fully managed serverless platform for deploying and scaling containerized applications quickly.
+Link: https://cloud.google.com/run
+Cloud Functions
+Description: A serverless, event-driven compute service to run code in response to events, such as a new file upload or a database change.
+Link: https://cloud.google.com/functions
+Google Kubernetes Engine (GKE)
+Description: A managed Kubernetes service for deploying containerized applications at scale, ideal for complex microservices or hosting fine-tuned models.
+Link: https://cloud.google.com/kubernetes-engine
+Data, Storage & Messaging
+Cloud Storage
+Description: A unified object storage service for storing and retrieving any amount of data, such as images, videos, and documents.
+Link: https://cloud.google.com/storage
+Firestore
+Description: A highly scalable, serverless NoSQL document database for storing and syncing data for client- and server-side development.
+Link: https://cloud.google.com/firestore
+Pub/Sub
+Description: A global, real-time messaging service that allows you to send and receive messages between independent applications, perfect for streaming data.
+Link: https://cloud.google.com/pubsub
+Operations & Monitoring
+Cloud Logging & Monitoring (Cloud Operations Suite)
+Description: A suite of tools that provide monitoring, logging, and diagnostics to help you understand your application's performance and health.
+Link: https://cloud.google.com/products/operations
+
+Mapping & Geolocation
+Google Maps Platform
+Description: Provides APIs for maps, routes, and places to visualize geo-tagged data, calculate routes, and add location intelligence to your apps.
+Link: https://developers.google.com/maps

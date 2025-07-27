@@ -9,9 +9,7 @@ logger = get_logger(__name__)
 
 class TransactionRAG:
     """
-    A minimal RAG agent that uses a pre-existing Vertex AI RAG corpus
-    to answer questions about transactions. This implementation is based on
-    the user-provided script for a quick, non-streaming MVP.
+    A minimal RAG chatbot that uses the exact template configuration
     """
     def __init__(self):
         """Initializes the Google GenAI client."""
@@ -28,13 +26,16 @@ class TransactionRAG:
 
     def chat(self, query: str):
         """
-        Chats with the RAG engine and returns a static, non-streaming response.
+        Basic chatbot that takes a query and returns a response using RAG
         """
-        if not query:
-            return {"response": "Please provide a query."}
-            
         try:
-            # This configuration is based directly on the user-provided script.
+            contents = [
+                types.Content(
+                    role="user",
+                    parts=[types.Part(text=query)]
+                )
+            ]
+            
             tools = [
                 types.Tool(
                     retrieval=types.Retrieval(
@@ -49,29 +50,40 @@ class TransactionRAG:
                 )
             ]
 
-            generation_config = types.GenerationConfig(
+            generate_content_config = types.GenerateContentConfig(
                 temperature=1,
                 top_p=1,
-                max_output_tokens=8192,  # Using a more reasonable limit than 65535
+                seed=0,
+                max_output_tokens=65535,
+                safety_settings=[
+                    types.SafetySetting(
+                        category="HARM_CATEGORY_HATE_SPEECH",
+                        threshold="OFF"
+                    ),
+                    types.SafetySetting(
+                        category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold="OFF"
+                    ),
+                    types.SafetySetting(
+                        category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold="OFF"
+                    ),
+                    types.SafetySetting(
+                        category="HARM_CATEGORY_HARASSMENT",
+                        threshold="OFF"
+                    )
+                ],
+                tools=tools,
+                thinking_config=types.ThinkingConfig(
+                    thinking_budget=-1,
+                ),
             )
-            
-            # Safety thresholds are set to be non-restrictive as in the script.
-            # Using the correct enum values for the google-genai library.
-            safety_settings = {
-                types.HarmCategory.HARM_CATEGORY_HATE_SPEECH: types.HarmBlockThreshold.BLOCK_NONE,
-                types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: types.HarmBlockThreshold.BLOCK_NONE,
-                types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: types.HarmBlockThreshold.BLOCK_NONE,
-                types.HarmCategory.HARM_CATEGORY_HARASSMENT: types.HarmBlockThreshold.BLOCK_NONE,
-            }
 
-            contents = [types.Content(role="user", parts=[types.Part.from_text(query)])]
-            
-            response = self.client.generate_content(
+            # Use generate_content instead of generate_content_stream for static response
+            response = self.client.models.generate_content(
                 model=self.model,
                 contents=contents,
-                tools=tools,
-                generation_config=generation_config,
-                safety_settings=safety_settings
+                config=generate_content_config,
             )
             
             return {"response": response.text}
@@ -87,4 +99,4 @@ def get_rag_agent():
     global _rag_agent
     if _rag_agent is None:
         _rag_agent = TransactionRAG()
-    return _rag_agent 
+    return _rag_agent

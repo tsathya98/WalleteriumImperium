@@ -9,14 +9,14 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 @router.post("/chat")
 async def chat_with_transactions(request: Request):
     """
-    Chat with your transaction data using natural language.
-    This endpoint queries a pre-configured RAG index.
+    Basic chatbot that takes a query and returns a response using RAG
     """
     try:
         body = await request.json()
-        query = body.get("query")
+        query = body.get("query", "")
+        
         if not query:
-            raise HTTPException(status_code=400, detail="Query cannot be empty.")
+            return {"response": "Please provide a query."}
             
         agent = get_rag_agent()
         response = agent.chat(query)

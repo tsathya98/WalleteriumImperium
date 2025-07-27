@@ -1,0 +1,157 @@
+Imagine you’re participating in a hackathon focused on GenAI. Brainstorm innovative, practical, and impactful project ideas that address real-world problems. Your suggestions should: 1. Solve specific challenges in the problem statement I provide 2. Incorporate novel AI/ML approaches or applications that go beyond common solutions. 3. Highlight how the project could have measurable societal or user impact. 4. Think from scalability pov, we shouldn't build just a prototype but an application since all the materials is given to us (in this case, its Google Cloud Agentic AI Day (Hackathon))
+
+I want you to be as detailed as possible since we are EXTREMELY good coders and we are a team of 3 with experts in GenAI, Computer Vision and Mobile App dev.
+So since its GOOGLE hackathon, I want you to be as detailed as possible and no compromise on tech stuff. Go through the problem statement context, see what  will be provided during hackathon, carefully go through our ideas and provide more ideas (which would be creative) and with the tech stack we have from Google, we would like to proceed. Please come up with all of the above and mention the following:
+1. Brief about the idea
+2. Opportunities
+	- How different is it from any of the other existing ideas?
+	- How will it be able to solve the problem?
+	- USP of the proposed solution
+3. List of features offered by the solution
+4. Technologies to be used in the solution
+
+I want you to answer not just in higher level, but also a good balance between technical users and business users. Since high level ideas is very common and its not so great. But lower level will DEFINTELY help in conveying we know what we doing right?
+
+<Ideation phase>
+Most finance apps are dull — charts, graphs, and alerts.
+Not just tracking spend → turning good money habits into rewards.
+Other apps (like Expensify, Splitwise, or Walnut) let you scan receipts. But that’s where it ends.
+Motivating you towards good habits before you hit pay.
+
+You’re not just scanning → you're understanding the items.
+
+Gemini can answer:
+"Can I cook a meal with what I bought?" or
+"Do I need to buy more detergent for this week?"
+
+This is contextual financial intelligence, not just OCR.
+Ideas we have:
+1. Gamified Finance With a Purpose
+2. AI-Powered Receipt Management That Understands Context
+3. Wallet Integration That Feels Like a Game Pass
+4. Persona-Driven Financial Coaching
+5. Multimodal + Multilingual Assistant
+6. Bridging Real-world Purchases to Digital Finance
+More Ideas:
+Helping you plan your month 
+Based on how you used to spend and helping you put customizable category specific funding and spending limits
+That can change dynamically as priorities change into the month
+Seeing if that gym membership or that depression ice-cream is actually paying off based on how your spending patterns and financial discipline changes
+Help you decide cost benifit analysis on things that can't be compared purely based in it's monetary value
+Like is the money for a faster internet connection worth it over better noise cancelling headphones
+For your rage and sanity
+Grocery guru sounds nice also sounds like a creepy old man stalking me buying a 10 pack of condoms
+1. What's different:
+
+Not just tracking spend - turning good money habits into rewards.
+
+Just like Habitica gamifies to-dos, you're gamifying saving, budgeting, and planning.
+
+Other apps only show what happened - you're nudging what should happen next through engaging design.
+
+2. What's different:
+
+We are not just scanning - we are understanding the items.
+
+Gemini can answer:
+
+"Can I cook a meal with what I bought?" or "Do I need to buy more detergent for this week?"
+
+This is contextual financial intelligence, not just OCR.
+
+3. What's different:
+
+We use Wallet as a dynamic progress board:
+
+This week's badge: Grocery Guru"
+
+You're 78% toward your ₹50K savings goal"
+
+Insights are push-updated as passes no need to open an app.
+
+It's not just finance tracking - it becomes a motivational feed
+
+4. What's different:
+
+We design for different personas with adaptive Al tone and goals.
+
+* A freelancer gets advice on cash flow smoothing.
+
+A student gets quests like "Save ₹100 this week = Free XP".
+
+Gemini shifts its language, difficulty, and strategy based on persona.
+
+It's not just personalization - it's user roleplay + narrative coaching
+
+5. Support for multi-lingual in terms of vision and audio input (other language receipts or taking multiple languages as input in voice mode)
+
+6. What's different:
+
+Every physical receipt to insight to Wallet pass to behavior change.
+
+You're making real-world expenses part of an interactive Al loop.
+
+No one else combines:
+
+Al receipts
+Wallet integration
+Game mechanics
+Personalized goals
+Local queries
+
+
+This is the first Al-powered, gamified receipt-to-insight system that turns your daily spending into quests, savings, and smart suggestions - right inside Google Wallet, personalized for your lifestyle
+
+
+Features
+
+1. Receipt Upload / OCR
+2. Expense Categorization
+3. Personalized Advice (tv aint that important because you have that money and u dont have equipments to support that example a person who owns "set top box" really needs 4K TV?? Really?) 
+4. Gamification
+5. Al-Powered Suggestions ( past spendjng habits- question user if it is absolutely necessary) 
+6. Google Wallet integration
+7. Local Language Support
+8. Persona-Based Experience
+9. Contextual Queries (e.g., cooking from purchases)
+10. Real-time Wallet Notifications
+11. Alerts when exceeding spending pattern changing abnormally over the period of time.
+
+
+Strengths
+
+* Unique combo of Al + Gamification + Wallet + Receipt Analysis
+
+- Persona-based guidance gives tailored experience
+
+* Local language support for Tamil, Hindi, Kannada, etc.
+
+- Google Wallet API integration with dynamic pass generation
+
+- Uses Gemini multimodal + structured financial data (MCP)
+
+* Converts passive spending into behavioral nudges + habits
+
+Opportunities
+
+- First-mover in gamified, Al-driven expense coaching for India
+
+- Integrate with UPI/Fi/ credit cards for deeper automation
+
+- Expand beyond Wallet - WhatsApp bots, widgets, or app integrations
+
+- Can evolve into a plug-in Al wallet layer for fintech apps
+</Ideation phase>
+
+
+
+Give verbose ideas , refine/rephrase ours and come up with proper plan for ppt.
+
+PPT slides required (a bit verbose for each slide):
+1. Brief about the idea
+2. Opportunities
+	- How different is it from any of the other existing ideas?
+	- How will it be able to solve the problem?
+	- USP of the proposed solution
+3. List of features offered by the solution
+4. Technologies to be used in the solution

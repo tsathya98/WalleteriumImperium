@@ -1,0 +1,147 @@
+Potential JSON keys and objects
+
+## 1. JSON Keys & Objects
+
+### 1.1. Common “Receipt” Fields
+
+```jsonc
+{
+  "place": "string",           // Where or from whom the transaction occurred (required)
+  "category": "string",        // User-defined category, e.g. "Dining" (optional)
+  "description": "string",     // Free-form notes (optional)
+  "time": "string (ISO 8601)", // Transaction timestamp (required)
+  "amount": number,            // Transaction amount (required)
+  "transactionType": "string", // "credit" or "debit" (required)
+  "importance": "string",      // One of "low", "medium", or "high" (optional)
+  "warranty": boolean,         // Does this purchase include a warranty? (optional)
+  "recurring": boolean         // Is this a recurring/subscription payment? (optional)
+}
+```
+
+---
+
+### 1.2. Subscription Details
+
+When `recurring: true`, you may include:
+
+```json
+"subscription": {
+  "name":         "Netflix",
+  "recurrence":   "monthly",       // e.g. "weekly", "annually"
+  "nextDueDate":  "2025-08-01"     // ISO date of next billing
+}
+```
+
+---
+
+### 1.3. Warranty Details
+
+When `warranty: true`, you may include:
+
+```json
+"warrantyDetails": {
+  "validUntil": "2026-03-15",      // ISO expiry date
+  "provider":   "Acme Corp",       // Optional issuer
+  "termsURL":   "https://..."      // Optional link
+}
+```
+
+---
+
+## 2. API Definitions
+
+### 2.1. **Create / Parse Receipt**
+
+* **Endpoint:** `POST /api/receipts`
+* **Input:**
+
+  ```json
+  { "imageBase64": "<base64-encoded receipt image>" }
+  ```
+* **Output:**
+
+  ```json
+  {
+    "receiptId": "abc123",
+    "parsedItems": [
+      {
+        "place": "Village Mart",
+        "time": "2025-07-24T14:32:00Z",
+        "amount": 42.50,
+        "transactionType": "debit",
+        "category": "Groceries",
+        "description": "Weekly groceries",
+        "importance": "medium",
+        "warranty": false,
+        "recurring": false
+      }
+      // …
+    ]
+  }
+  ```
+
+---
+
+### 2.2. **Update Receipt**
+
+* **Endpoint:** `PUT /api/receipts/{receiptId}`
+* **Input:**
+
+  ```json
+  {
+    "parsedItems": [ /* corrected items as above */ ],
+    "subscription": { /* optional */ },
+    "warrantyDetails": { /* optional */ }
+  }
+  ```
+* **Output:**
+
+  ```json
+  {
+    "status": "success",
+    "message": "Receipt updated"
+  }
+  ```
+
+---
+
+### 2.3. **Free-form to Structured Parsing**
+
+* **Endpoint:** `POST /api/parse`
+* **Input:**
+
+  ```json
+  {
+    "rawText": "1. Amazon 2025-07-22 $29.99 subscription\n2. IKEA 07/20/25 199.00 furniture"
+  }
+  ```
+* **Output:**
+
+  ```json
+  {
+    "items": [
+      {
+        "place": "Amazon",
+        "time": "2025-07-22T00:00:00Z",
+        "amount": 29.99,
+        "transactionType": "debit",
+        "category": "Subscription",
+        "description": null,
+        "importance": "low",
+        "warranty": false,
+        "recurring": true
+      },
+      {
+        "place": "IKEA",
+        "time": "2025-07-20T00:00:00Z",
+        "amount": 199.00,
+        "transactionType": "debit",
+        "category": "Furniture",
+        "description": null,
+        "importance": "high",
+        "warranty": true,
+        "recurring": false
+      }
+    ]
+  }
+  ```

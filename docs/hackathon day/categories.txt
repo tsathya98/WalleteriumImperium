@@ -1,0 +1,28 @@
+- Groceries
+- Restaurant, fast-food
+- Clothes & shoes
+- Jewels & accessories
+- Health & beauty
+- Gifts
+- Kids, toys
+- Pharmacy
+- Doctor 
+- Rent
+- Mortgage
+- Maintenance, repairs
+- Electricity & Gas
+- Public transport, Taxi
+- Vacation
+- Fuel
+- Parking
+- Subscription: Phone, Internet recharge
+- Subscriptions: TV, streaming (entertainment)
+- Software, apps, games (onetime/subscription)
+- Insurances
+- Loans, Interests
+- Investment: Realty
+- Investment: Vehicles
+- Investment: Financial investments / Savings
+- Investment: House/land/etc.
+- Income: Fixed (recurring)
+- Income: Variable 
