@@ -1,10 +1,10 @@
 # app/api/onboarding.py
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Dict
 
-from agents.onboarding_agent.agent import get_onboarding_agent, user_profiles
+from agents.onboarding_agent import agent as onboarding_agent_module
 from agents.onboarding_agent.schemas import OnboardingRequest
 
 router = APIRouter()
@@ -17,28 +17,31 @@ class OnboardingResponse(BaseModel):
 
 
 @router.post("/chat", response_model=OnboardingResponse)
-async def chat_with_onboarding_agent(request: OnboardingRequest):
+async def chat_with_onboarding_agent(request: Request, body: OnboardingRequest):
     """
     Handles a chat interaction with the onboarding agent.
     If the user's query is empty, it initiates the conversation.
     """
-    agent = get_onboarding_agent()
-    session_id = request.session_id
-    logger.info(f"Received chat request for session_id: {session_id}, user_id: {request.user_id}")
+    agent = onboarding_agent_module.get_onboarding_agent()
+    session_id = body.session_id
+    logger.info(f"Received chat request for session_id: {session_id}, user_id: {body.user_id}")
     
-    query = request.query
+    query = body.query
     if not query:
         # This is the very beginning of the conversation.
         query = "Hello! Please introduce yourself and start the onboarding process."
         logger.info("Empty query on new session. Initiating conversation.")
 
     try:
+        # Retrieve the initialized FirestoreService from application state
+        firestore_service = request.app.state.firestore_service
         logger.info(f"Invoking onboarding agent for session_id: {session_id}")
         agent_result = await agent.chat(
+            firestore_service=firestore_service,
             session_id=session_id,
-            user_id=request.user_id,
+            user_id=body.user_id,
             query=query,
-            language=request.language
+            language=body.language
         )
         logger.info(f"Agent returned response for session_id: {session_id}")
 
@@ -51,14 +54,3 @@ async def chat_with_onboarding_agent(request: OnboardingRequest):
     except Exception as e:
         logger.error(f"Error during chat for session_id: {session_id} - {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/profile/{user_id}")
-def get_user_profile(user_id: str):
-    """
-    Retrieves a user's profile.
-    """
-    if user_id in user_profiles:
-        return user_profiles[user_id]
-    else:
-        raise HTTPException(status_code=404, detail="User not found")

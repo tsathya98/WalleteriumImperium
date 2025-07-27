@@ -75,6 +75,11 @@ class SimplifiedReceiptAgent:
                     "Could not find a valid JSON object in the AI response."
                 )
 
+            # Add model version to the metadata for validation
+            if "metadata" not in ai_json:
+                ai_json["metadata"] = {}
+            ai_json["metadata"]["model_version"] = self.model_name
+
             # Use Pydantic for validation and data hydration
             receipt_analysis = ReceiptAnalysis.model_validate(ai_json)
 

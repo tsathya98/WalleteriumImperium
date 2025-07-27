@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
         # Initialize Firestore service
         firestore_service = FirestoreService()
         await firestore_service.initialize()
-        app.state.firestore = firestore_service
+        app.state.firestore_service = firestore_service
 
         # Initialize Token service (SYNC VERSION)
         token_service = TokenService(firestore_service=firestore_service)

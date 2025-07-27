@@ -12,18 +12,18 @@ from vertexai.generative_models import (
 )
 from typing import Dict, Any, List
 import datetime
+import random
 
 from .prompts import ONBOARDING_INSTRUCTION
 from .schemas import UserProfile, RealEstateAsset, GoldAsset, StockAsset, RecurringBill
 from app.core.config import get_settings
+from app.services.firestore_service import FirestoreService
 
 logger = logging.getLogger(__name__)
 
-# In-memory "database" for user profiles.
-user_profiles: Dict[str, UserProfile] = {}
 
-
-def update_user_profile(
+async def update_user_profile(
+    firestore_service: "FirestoreService",
     user_id: str,
     language: str = "en",
     financial_goals: list = None,
@@ -39,51 +39,86 @@ def update_user_profile(
     onboarding_complete: bool = False,
 ) -> Dict[str, Any]:
     """
-    Creates or updates a user's profile. Call this with onboarding_complete=True when you have gathered all necessary information.
+    Creates or updates a user's profile and assets in Firestore.
     """
-    logger.info(f"Updating profile for user_id: {user_id}")
-    if user_id not in user_profiles:
-        user_profiles[user_id] = UserProfile(user_id=user_id, language=language)
-        logger.info(f"Created new profile for user_id: {user_id}")
+    logger.info(f"Updating profile and assets for user_id: {user_id} in Firestore.")
 
-    profile = user_profiles[user_id]
+    # 1. Save/Update the main user profile in 'wallet_user_collection'
+    user_doc_ref = firestore_service.client.collection("wallet_user_collection").document(user_id)
 
-    if financial_goals is not None:
-        profile.financial_goals.extend(financial_goals)
-    if spending_habits is not None:
-        profile.spending_habits = spending_habits
-    if risk_appetite is not None:
-        profile.risk_appetite = risk_appetite
-    if persona is not None:
-        profile.persona = persona
-    if has_invested_before is not None:
-        profile.has_invested_before = has_invested_before
-    if investment_interests is not None:
-        profile.investment_interests.extend(investment_interests)
+    user_data = {
+        "uid": user_id,
+        "last_seen": datetime.datetime.now(datetime.timezone.utc),
+    }
+    if persona:
+        user_data["persona"] = persona
+    if onboarding_complete is not None:
+        user_data["onboarding_completed"] = onboarding_complete
+
+    # Using merge=True to not overwrite existing fields like email, display_name etc.
+    await user_doc_ref.set(user_data, merge=True)
+    logger.info(f"Updated wallet_user_collection for user {user_id}")
+
+    # 2. Save each asset to 'user_assets' collection
+    assets_collection_ref = user_doc_ref.collection("user_assets")
+
+    # Helper to generate a random hex color
+    def get_random_color():
+        return f"#{random.randint(0, 0xFFFFFF):06x}"
 
     if real_estate_assets:
         for asset_data in real_estate_assets:
-            profile.assets.real_estate.append(RealEstateAsset(**asset_data))
+            asset = RealEstateAsset(**asset_data)
+            asset_doc = {
+                "user_id": user_id,
+                "account_name": f"Real Estate {asset.size_sqft} sqft",
+                "account_type": "Real Estate",
+                "current_balance": asset.purchase_price,
+                "created_at": datetime.datetime.fromisoformat(asset.purchase_date).replace(tzinfo=datetime.timezone.utc),
+                "account_color": get_random_color(),
+                "details": asset.dict()
+            }
+            await assets_collection_ref.add(asset_doc)
+            logger.info(f"Saved Real Estate asset for user {user_id}")
 
     if gold_assets:
         for asset_data in gold_assets:
-            profile.assets.gold.append(GoldAsset(**asset_data))
+            asset = GoldAsset(**asset_data)
+            asset_doc = {
+                "user_id": user_id,
+                "account_name": f"Gold {asset.volume_g}g",
+                "account_type": "Gold",
+                "current_balance": asset.volume_g * asset.purchase_price_per_g if asset.purchase_price_per_g else 0,
+                "created_at": datetime.datetime.fromisoformat(asset.purchase_date).replace(tzinfo=datetime.timezone.utc),
+                "account_color": get_random_color(),
+                "details": asset.dict()
+            }
+            await assets_collection_ref.add(asset_doc)
+            logger.info(f"Saved Gold asset for user {user_id}")
 
     if stock_assets:
         for asset_data in stock_assets:
-            profile.assets.stocks.append(StockAsset(**asset_data))
+            asset = StockAsset(**asset_data)
+            asset_doc = {
+                "user_id": user_id,
+                "account_name": f"Stock: {asset.ticker}",
+                "account_type": "Stocks",
+                "current_balance": asset.units_bought * asset.unit_price_purchase,
+                "created_at": datetime.datetime.fromisoformat(asset.exchange_date).replace(tzinfo=datetime.timezone.utc),
+                "account_color": get_random_color(),
+                "details": asset.dict()
+            }
+            await assets_collection_ref.add(asset_doc)
+            logger.info(f"Saved Stock asset for user {user_id}")
 
-    if recurring_bills:
-        for bill_data in recurring_bills:
-            profile.recurring_bills.append(RecurringBill(**bill_data))
+    # Note: Recurring bills are not saved to 'user_assets' as per the request.
 
     logger.info(
-        f"Profile for {user_id} updated. Onboarding complete: {onboarding_complete}"
+        f"Profile and assets for {user_id} updated. Onboarding complete: {onboarding_complete}"
     )
     return {
         "status": "success",
         "user_id": user_id,
-        "profile": profile.dict(),
         "onboarding_complete": onboarding_complete,
     }
 
@@ -208,7 +243,12 @@ class OnboardingAgent:
         logger.info("Onboarding Agent ready!")
 
     async def chat(
-        self, session_id: str, user_id: str, query: str, language: str = "en"
+        self,
+        firestore_service: "FirestoreService",
+        session_id: str,
+        user_id: str,
+        query: str,
+        language: str = "en",
     ):
         logger.info(f"Agent starting chat for session_id: {session_id}")
 
@@ -221,63 +261,50 @@ class OnboardingAgent:
             self.sessions[session_id] = self.model.start_chat(
                  history=[
                     Content(role="user", parts=[Part.from_text(initial_prompt)]),
-                    Content(role="model", parts=[Part.from_text("Okay, I am ready to be Wally. I will start the conversation by introducing myself and asking the first question, keeping the user's ID in mind for tool calls: " + user_id)]),
+                    Content(role="model", parts=[Part.from_text("Okay, I am Wally. I will now start the conversation with the user (ID: " + user_id + ") by introducing myself and asking a fun, open-ended question about their spending habits.")] ),
                 ]
             )
 
         chat_session = self.sessions[session_id]
+        onboarding_complete = False
 
-        logger.info(f"Sending message to Gemini for session_id: {session_id}")
+        # Start the agentic loop
         response = chat_session.send_message(query)
-        logger.info(f"Received response from Gemini for session_id: {session_id}")
-
-        onboarding_complete = False  # Default to False for each turn
-
-        # FIX: Handle multipart responses properly
-        response_parts = response.candidates[0].content.parts
-        text_response = None
-
-        # Find and execute the function call first
-        for part in response_parts:
-            if part.function_call:
-                function_call = part.function_call
-                logger.info(
-                    f"Gemini requested function call: {function_call.name} for session_id: {session_id}"
-                )
+        
+        while True:
+            function_call = None
+            # Check all parts for a function call
+            for part in response.candidates[0].content.parts:
+                if part.function_call:
+                    function_call = part.function_call
+                    break
+            
+            if function_call:
+                logger.info(f"Gemini requested function call: {function_call.name}")
 
                 args = {key: value for key, value in function_call.args.items()}
                 if "user_id" not in args:
                     args["user_id"] = user_id
 
                 logger.info(f"Executing function call with args: {args}")
-                result = update_user_profile(**args)
+                result = await update_user_profile(firestore_service=firestore_service, **args)
                 logger.info(f"Function call result: {result['status']}")
 
-                # Check for the completion flag from the tool's result
                 if result.get("onboarding_complete", False):
                     onboarding_complete = True
-                    logger.info(f"Onboarding marked as complete for session_id: {session_id}")
-
-                logger.info("Sending function response back to Gemini to get next question...")
+                    logger.info("Onboarding complete flag received from tool.")
+                
+                logger.info("Sending tool result back to Gemini...")
                 response = chat_session.send_message(
                     Part.from_function_response(name=function_call.name, response={"content": result})
                 )
-                logger.info("Received final response from Gemini after function call.")
-                break  # Assume only one function call per turn
-
-        # Find and return the text response
-        for part in response.candidates[0].content.parts:
-            if part.text:
-                text_response = part.text
+            else:
+                # If there's no more function calls, the conversation is done for this turn
+                logger.info("No more function calls from Gemini. Returning text response.")
                 break
 
-        if text_response:
-            logger.info(f"Returning text response for session_id: {session_id}")
-            return {"text": text_response, "onboarding_complete": onboarding_complete}
-        else:
-            # This shouldn't happen with our prompt, but just in case
-            logger.warning("No text part in response. Returning generic message.")
-            return {"text": "Got it! Let's continue.", "onboarding_complete": onboarding_complete}
+        # By the end of the loop, response is guaranteed to be a text-only response
+        return {"text": response.text, "onboarding_complete": onboarding_complete}
 
 
 _agent = None

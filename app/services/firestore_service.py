@@ -11,10 +11,12 @@ import uuid
 from google.cloud import firestore
 from google.cloud.firestore import AsyncClient
 from google.api_core.exceptions import NotFound
+from vertexai.generative_models import Content
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.models import TokenData, ReceiptAnalysis, ProcessingStatus, ProcessingStage
+from agents.onboarding_agent.schemas import UserProfile
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -69,6 +71,67 @@ class FirestoreService:
         """Ensure service is initialized"""
         if not self._initialized or not self.client:
             raise RuntimeError("Firestore service not initialized")
+
+    # Onboarding Agent Operations
+    async def get_user_profile(self, user_id: str) -> Optional[UserProfile]:
+        """Retrieves a user profile from Firestore."""
+        self._ensure_initialized()
+        logger.debug(f"Getting user profile for user_id: {user_id}")
+        doc_ref = self.client.collection("user_profiles").document(user_id)
+        try:
+            doc = await doc_ref.get()
+            if doc.exists:
+                logger.debug(f"User profile found for {user_id}")
+                return UserProfile(**doc.to_dict())
+            else:
+                logger.debug(f"No user profile found for {user_id}")
+                return None
+        except Exception as e:
+            logger.error(f"Error getting user profile for {user_id}: {e}", exc_info=True)
+            raise
+
+    async def save_user_profile(self, profile: UserProfile):
+        """Saves a user profile to Firestore."""
+        self._ensure_initialized()
+        logger.debug(f"Saving user profile for user_id: {profile.user_id}")
+        doc_ref = self.client.collection("user_profiles").document(profile.user_id)
+        try:
+            await doc_ref.set(profile.dict(), merge=True)
+            logger.info(f"User profile for {profile.user_id} saved successfully.")
+        except Exception as e:
+            logger.error(f"Error saving user profile for {profile.user_id}: {e}", exc_info=True)
+            raise
+
+    async def get_chat_history(self, session_id: str) -> List[Content]:
+        """Retrieves chat history for a session from Firestore."""
+        self._ensure_initialized()
+        logger.debug(f"Getting chat history for session_id: {session_id}")
+        doc_ref = self.client.collection("chat_sessions").document(session_id)
+        try:
+            doc = await doc_ref.get()
+            if doc.exists:
+                history_data = doc.to_dict().get("history", [])
+                logger.debug(f"Found {len(history_data)} messages for session {session_id}")
+                return [Content.from_dict(item) for item in history_data]
+            else:
+                logger.debug(f"No history found for session {session_id}")
+                return []
+        except Exception as e:
+            logger.error(f"Error getting chat history for {session_id}: {e}", exc_info=True)
+            return []
+
+    async def save_chat_history(self, session_id: str, history: List[Content]):
+        """Saves chat history for a session to Firestore."""
+        self._ensure_initialized()
+        logger.debug(f"Saving {len(history)} chat messages for session: {session_id}")
+        doc_ref = self.client.collection("chat_sessions").document(session_id)
+        try:
+            history_data = [item.to_dict() for item in history]
+            await doc_ref.set({"history": history_data})
+            logger.info(f"Chat history for session {session_id} saved successfully.")
+        except Exception as e:
+            logger.error(f"Error saving chat history for {session_id}: {e}", exc_info=True)
+            raise
 
     # Token Operations
     async def create_token(self, user_id: str, expires_in_minutes: int = None) -> str:
