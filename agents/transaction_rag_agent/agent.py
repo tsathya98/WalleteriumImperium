@@ -1,91 +1,79 @@
 """
-Direct Vertex AI RAG Engine Agent
+Minimal Viable Transaction RAG Agent using google-genai
 """
-import json
-import tempfile
-import os
-import uuid
-import vertexai
-from vertexai import rag
-from vertexai.generative_models import GenerativeModel, Tool
-from app.core.config import get_settings
+from google import genai
+from google.genai import types
 from app.core.logging import get_logger
-from app.services.firestore_service import FirestoreService
 
-settings = get_settings()
 logger = get_logger(__name__)
 
-CHAT_PROMPT = """
-You are a helpful assistant that answers questions about a user's transactions.
-Use the provided transaction data to answer the user's query.
-The data is a list of transactions, each a full JSON object.
-"""
-
 class TransactionRAG:
+    """
+    A minimal RAG agent that uses a pre-existing Vertex AI RAG corpus
+    to answer questions about transactions. This implementation is based on
+    the user-provided script for a quick, non-streaming MVP.
+    """
     def __init__(self):
-        vertexai.init(project=settings.GOOGLE_CLOUD_PROJECT_ID, location=settings.VERTEX_AI_LOCATION)
-        self.corpus = self._get_or_create_corpus()
-        self.model = GenerativeModel(
-            model_name=settings.VERTEX_AI_MODEL,
-            system_instruction=CHAT_PROMPT
-        )
-
-    def _get_or_create_corpus(self):
-        """Gets or creates the RAG corpus."""
+        """Initializes the Google GenAI client."""
         try:
-            corpora = rag.list_corpora()
-            for corpus in corpora:
-                if corpus.display_name == "transactions":
-                    logger.info(f"Using existing corpus: {corpus.name}")
-                    return corpus
-            
-            logger.info("Creating new corpus: transactions")
-            return rag.create_corpus(display_name="transactions", description="All user transactions")
+            self.client = genai.Client(
+                vertexai=True,
+                project="walleterium",
+                location="global",
+            )
+            self.model = "gemini-2.5-flash"
         except Exception as e:
-            logger.error(f"Failed to get or create corpus: {e}")
+            logger.error(f"Failed to initialize TransactionRAG agent: {e}")
             raise
 
-    def index_transaction(self, transaction: dict):
-        """Indexes a single transaction object."""
-        try:
-            transaction_id = transaction.get("receipt_id", str(uuid.uuid4()))
-            transaction_string = json.dumps(transaction, indent=2, default=str)
-            
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
-                temp_file.write(transaction_string)
-                temp_file_path = temp_file.name
-            
-            rag.upload_file(
-                corpus_name=self.corpus.name,
-                path=temp_file_path,
-                display_name=f"Transaction {transaction_id}",
-                description="A single transaction document."
-            )
-            os.unlink(temp_file_path)
-            
-            logger.info(f"Successfully indexed transaction {transaction_id}")
-            return {"status": "success", "transaction_id": transaction_id}
-        except Exception as e:
-            logger.error(f"Failed to index transaction: {e}")
-            return {"status": "error", "message": str(e)}
-
     def chat(self, query: str):
-        """Chats with the RAG engine about transactions."""
+        """
+        Chats with the RAG engine and returns a static, non-streaming response.
+        """
+        if not query:
+            return {"response": "Please provide a query."}
+            
         try:
-            rag_retrieval_tool = Tool.from_retrieval(
-                retrieval=rag.Retrieval(
-                    source=rag.VertexRagStore(
-                        rag_resources=[rag.RagResource(rag_corpus=self.corpus.name)]
+            # This configuration is based directly on the user-provided script.
+            tools = [
+                types.Tool(
+                    retrieval=types.Retrieval(
+                        vertex_rag_store=types.VertexRagStore(
+                            rag_resources=[
+                                types.VertexRagStoreRagResource(
+                                    rag_corpus="projects/walleterium/locations/us-central1/ragCorpora/2305843009213693952"
+                                )
+                            ],
+                        )
                     )
                 )
+            ]
+
+            generation_config = types.GenerationConfig(
+                temperature=1,
+                top_p=1,
+                max_output_tokens=8192,  # Using a more reasonable limit than 65535
             )
             
-            chat_model = GenerativeModel(
-                model_name=settings.VERTEX_AI_MODEL,
-                tools=[rag_retrieval_tool]
+            # Safety thresholds are set to be non-restrictive as in the script.
+            # Using the correct enum values for the google-genai library.
+            safety_settings = {
+                types.HarmCategory.HARM_CATEGORY_HATE_SPEECH: types.HarmBlockThreshold.BLOCK_NONE,
+                types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: types.HarmBlockThreshold.BLOCK_NONE,
+                types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: types.HarmBlockThreshold.BLOCK_NONE,
+                types.HarmCategory.HARM_CATEGORY_HARASSMENT: types.HarmBlockThreshold.BLOCK_NONE,
+            }
+
+            contents = [types.Content(role="user", parts=[types.Part.from_text(query)])]
+            
+            response = self.client.generate_content(
+                model=self.model,
+                contents=contents,
+                tools=tools,
+                generation_config=generation_config,
+                safety_settings=safety_settings
             )
             
-            response = chat_model.generate_content(query)
             return {"response": response.text}
         except Exception as e:
             logger.error(f"Chat failed: {e}")
@@ -95,6 +83,7 @@ class TransactionRAG:
 _rag_agent = None
 
 def get_rag_agent():
+    """Provides a singleton instance of the TransactionRAG agent."""
     global _rag_agent
     if _rag_agent is None:
         _rag_agent = TransactionRAG()
