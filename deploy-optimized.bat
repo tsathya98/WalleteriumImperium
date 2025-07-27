@@ -4,6 +4,16 @@ REM deploy-optimized.bat - Optimized Cloud Run Deployment for WalleteriumImperiu
 echo 🚀 WalleteriumImperium - Optimized Cloud Run Deployment
 echo =====================================================
 
+REM Pre-deployment testing
+echo 🧪 Running pre-deployment tests...
+python debug_startup.py
+if %errorlevel% neq 0 (
+    echo ❌ Pre-deployment tests failed - fix issues before deploying
+    pause
+    exit /b 1
+)
+echo ✅ Pre-deployment tests passed
+
 REM Configuration
 set PROJECT_ID=walleterium
 set REGION=asia-south1
